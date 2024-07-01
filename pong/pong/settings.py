@@ -19,11 +19,6 @@ import random
 
 load_dotenv(verbose=True)
 
-INTRA_UID = getenv("INTRA_UID")
-INTRA_SECRET_KEY = getenv("INTRA_SECRET_KEY")
-REDIRECT_URI = getenv("REDIRECT_URI")
-TAKE_TOKEN_URL = getenv("TAKE_TOKEN_URL")
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
