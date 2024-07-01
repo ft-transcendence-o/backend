@@ -11,6 +11,18 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
+from dotenv import load_dotenv
+from os import getenv
+
+import string
+import random
+
+load_dotenv(verbose=True)
+
+INTRA_UID = getenv("INTRA_UID")
+INTRA_SECRET_KEY = getenv("INTRA_SECRET_KEY")
+REDIRECT_URI = getenv("REDIRECT_URI")
+TAKE_TOKEN_URL = getenv("TAKE_TOKEN_URL")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,7 +32,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-ku=h+b+!gph*p=t#w#2g5vg)3)oh5)b3@o!d5x!j#j&qdw0=ip'
+chars = ''.join([string.ascii_letters, string.digits, string.punctuation]).replace('\'', '').replace('"', '').replace('\\', '')
+SECRET_KEY = ''.join([random.SystemRandom().choice(chars) for i in range(50)])
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
