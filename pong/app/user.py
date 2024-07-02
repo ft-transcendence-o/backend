@@ -1,4 +1,4 @@
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from os import getenv
 import requests
 
@@ -17,6 +17,21 @@ import requests
         https://api.intra.42.fr/v2/me
 """
 
+"""
+def take_access_token(request):
+    INTRA_UID = getenv("INTRA_UID")
+    INTRA_SECRET_KEY = getenv("INTRA_SECRET_KEY")
+    URL = "https://api.intra.42.fr/oauth/token"
+    data = {
+        "grant_type": "client_credentials",
+        "client_id": INTRA_UID,
+        "client_secret": INTRA_SECRET_KEY,
+    }
+    response = requests.post(URL, data=data)
+        
+    return HttpResponse(response.text)
+"""
+
 def take_access_token(request):
     """
     access token을 발급받는 곳
@@ -29,8 +44,21 @@ def take_access_token(request):
         "client_id": INTRA_UID,
         "client_secret": INTRA_SECRET_KEY,
     }
-    response = requests.post(URL, data=data)
-    return HttpResponse(response.text)
+    try:
+        response = requests.post(URL, data=data)
+        response_data = response.json()
+        if response.status_code != 200:
+            return JsonResponse(response_data, status=response.status_code)
+        
+        token = response_data.get("access_token")
+        if not token:
+            error_message = {"error": "No access token in response"}
+            return JsonResponse(error_message, status=400)
+        return JsonResponse(response_data, status=200)
+
+    except requests.RequestException as e:
+        error_message = {"error": str(e)}
+        return JsonResponse(error_message, status=500)
 
 def redirect(request):
     """
