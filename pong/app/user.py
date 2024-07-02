@@ -17,32 +17,49 @@ import requests
         https://api.intra.42.fr/v2/me
 """
 
-"""
-def take_access_token(request):
-    INTRA_UID = getenv("INTRA_UID")
-    INTRA_SECRET_KEY = getenv("INTRA_SECRET_KEY")
-    URL = "https://api.intra.42.fr/oauth/token"
-    data = {
-        "grant_type": "client_credentials",
-        "client_id": INTRA_UID,
-        "client_secret": INTRA_SECRET_KEY,
-    }
-    response = requests.post(URL, data=data)
-        
-    return HttpResponse(response.text)
-"""
+def login_required(func):
+    @wraps(func)
+    def wrapper(request, *args, **kwargs):
+        """
+        access_token의 유효성을 검사하는 데코레이터
+        :param request의 헤더에 Authorization이라는 name을 가진 value값을 사용
+        """
+        access_token = request.headers.get('Authorization')
+        if not access_token:
+            return JsonResponse({'error': 'No access token provided'}, status=401)
 
-def take_access_token(request):
+        if access_token.startswith('Bearer '):
+            access_token = access_token[7:]
+
+        if not is_valid_token(access_token):
+            return JsonResponse({'error': 'Invalid access token'}, status=401)
+
+        return func(request, *args, **kwargs)
+    return wrapper
+
+def is_valid_token(token):
     """
-    access token을 발급받는 곳
+    access_token을 발급 받고 테스트
+    expired 및 status_code를 사용해 유효한지 확인
+    """
+    URL = "https://api.intra.42.fr/oauth/token/info"
+    headers = { "Authorization": "Bearer %s" % token }
+    response = requests.get(URL, headers=headers)
+    return HttpResponse(response.text)
+
+def exchange_access_token(request):
+    """
+    code를 access_token으로 교환
     """
     INTRA_UID = getenv("INTRA_UID")
     INTRA_SECRET_KEY = getenv("INTRA_SECRET_KEY")
     URL = "https://api.intra.42.fr/oauth/token"
     data = {
-        "grant_type": "client_credentials",
+        "grant_type": "authorization_code",
         "client_id": INTRA_UID,
         "client_secret": INTRA_SECRET_KEY,
+        # code 값을 받아올 것
+        " code": "",
     }
     try:
         response = requests.post(URL, data=data)
