@@ -4,6 +4,8 @@ from functools import wraps
 from os import getenv
 import requests
 
+from app.decorators import login_required
+
 """
 42 OAuth2의 흐름
 1. https://api.intra.42.fr/oauth/authorize 사용자를 연결한다.
@@ -18,27 +20,6 @@ import requests
     curl -H "Authorization: Bearer YOUR_ACCESS_TOKEN" /
         https://api.intra.42.fr/v2/me
 """
-
-def login_required(func):
-    @wraps(func)
-    def wrapper(request, *args, **kwargs):
-        """
-        access_token의 유효성을 검사하는 데코레이터
-        :param request의 헤더에 'Authorization' name을 가진 value 사용
-        """
-        access_token = request.headers.get('Authorization')
-        if not access_token:
-            return JsonResponse({'error': 'No access token provided'}, status=401)
-
-        if access_token.startswith('Bearer '):
-            access_token = access_token[7:]
-
-        is_valid_token = cache.get(access_token)
-        if not is_valid_token:
-            return JsonResponse({'error': 'Expired token'}, status=401)
-
-        return func(request, *args, **kwargs)
-    return wrapper
 
 @login_required
 def need_login(request):
@@ -57,7 +38,7 @@ def get_token_info(token):
 
 def temp_access_token(request):
     """
-    code를 access_token으로 교환
+    테스트용 grant_type == client_credentials
     """
     INTRA_UID = getenv("INTRA_UID")
     INTRA_SECRET_KEY = getenv("INTRA_SECRET_KEY")
