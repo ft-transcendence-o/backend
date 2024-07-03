@@ -21,6 +21,16 @@ from app.decorators import login_required
         https://api.intra.42.fr/v2/me
 """
 
+"""
+backend 인증 로직
+1. frontend에서 redirectURI를 통하여 얻은 "code"를 받는다
+2. "code"를 access_token으로 exchange한다.
+3. access_token을 사용하여 /v2/me 에서 정보를 받는다.
+4. email 정보를 사용하여 2FA를 실행한다
+"""
+
+API_URL = getenv("API_URL")
+
 @login_required
 def need_login(request):
     return HttpResponse("Can you join")
