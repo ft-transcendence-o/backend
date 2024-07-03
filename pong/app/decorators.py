@@ -1,6 +1,6 @@
 from django.http import JsonResponse
+from django.core.cache import cache
 from functools import wraps
-import requests
 
 
 def login_required(func):
