@@ -69,6 +69,8 @@ def temp_access_token(request):
 def exchange_access_token(request):
     """
     code를 access_token으로 교환
+    access_token을 cache에 저장해서 
+    expires_in을 체크하는 방식
     """
     INTRA_UID = getenv("INTRA_UID")
     INTRA_SECRET_KEY = getenv("INTRA_SECRET_KEY")
@@ -91,7 +93,7 @@ def exchange_access_token(request):
         if not token:
             error_message = {"error": "No access token in response"}
             return JsonResponse(error_message, status=400)
-        cache.set(token, '-', timeout=expires_in)
+        cache.set(token, True, timeout=expires_in)
         return JsonResponse(response_data, status=200)
 
     except requests.RequestException as e:
