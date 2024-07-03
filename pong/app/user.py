@@ -1,6 +1,7 @@
 from django.http import HttpResponse, JsonResponse
 from django.core.cache import cache
 from os import getenv
+import pyotp
 import requests
 
 from app.decorators import login_required
@@ -29,6 +30,43 @@ backend 인증 로직
 """
 
 API_URL = getenv("API_URL")
+
+"""
+OTP 주의사항
+1. HTTPS 통신 사용
+2. OTP브루트포스 방지 (타임스탬프 확인)
+3. 스로틀 속도 제한
+"""
+
+# @login_required
+def otp_test(request):
+    """
+    otp URI를 만들고 이를 QRcode로 변환하여 사용
+    secret key 값을 user db에 저장한 뒤 꺼내어서 사용
+    """
+    secret = pyotp.random_base32()
+    URI = pyotp.totp.TOTP(secret).provisioning_uri(
+        # user email로 입력
+        name="user@mail.com", issuer_name="pong_game"
+    )
+    # need to store seret value in user db
+    return JsonResponse({"otpauth_uri": URI}, status=200)
+
+
+# @login_required
+def validate_otp(request):
+    """
+    user의 secret값을 사용해서 otp 값이 타당한지 확인
+    secret을 db에서 매번 확인하는 것, caching 하는 것 선택
+    """
+    # db? caching?
+    secret = 'temp'
+    input_pass = request.POST['otp']
+    expected_pass = pyotp.TOTP(secret).now() # type str
+    if input_pass != expected_pass:
+        return HttpResponse("bad")
+    return HttpResponse("good")
+    
 
 @login_required
 def need_login(request):

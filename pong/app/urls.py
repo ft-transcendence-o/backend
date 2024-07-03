@@ -8,4 +8,5 @@ urlpatterns = [
     path("user/lock/", user.need_login, name="need_login"),
     path("user/info/", user.get_user_info, name="info"),
     path("user/token/", user.get_token_info, name="token"),
+    path("user/otp/", user.otp_test, name="otp"),
 ]
