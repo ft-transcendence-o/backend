@@ -35,14 +35,26 @@ API_URL = getenv("API_URL")
 def need_login(request):
     return HttpResponse("Can you join")
 
-def get_token_info(token):
+def get_user_info(request):
+    """
+    access_token을 활용하여 user의 정보를 받아온다.
+    """
+    URI = API_URL + "/v2/me"
+    token = "81a462114352aa75674c78cf816567ad802858724b3494f524f274532ab2cc24"
+    headers = { "Authorization": "Bearer %s" % token }
+    response = requests.get(URI, headers=headers)
+    return HttpResponse(response.text)
+
+
+def get_token_info(request):
     """
     access_token을 발급 받고 테스트
     expired 및 status_code를 사용해 유효한지 확인
     """
-    URL = "https://api.intra.42.fr/oauth/token/info"
+    URI = API_URL + "/auth/token/info"
+    token = "81a462114352aa75674c78cf816567ad802858724b3494f524f274532ab2cc24"
     headers = { "Authorization": "Bearer %s" % token }
-    response = requests.get(URL, headers=headers)
+    response = requests.get(URI, headers=headers)
     return HttpResponse(response.text)
 
 
@@ -52,14 +64,14 @@ def temp_access_token(request):
     """
     INTRA_UID = getenv("INTRA_UID")
     INTRA_SECRET_KEY = getenv("INTRA_SECRET_KEY")
-    URL = "https://api.intra.42.fr/oauth/token"
+    URI = API_URL + "oauth/token"
     data = {
         "grant_type": "client_credentials",
         "client_id": INTRA_UID,
         "client_secret": INTRA_SECRET_KEY,
     }
     try:
-        response = requests.post(URL, data=data)
+        response = requests.post(URI, data=data)
         response_data = response.json()
         if response.status_code != 200:
             return JsonResponse(response_data, status=response.status_code)
@@ -69,7 +81,7 @@ def temp_access_token(request):
         if not token or not expires_in:
             error_message = {"error": "No access_token or expires_in in response"}
             return JsonResponse(error_message, status=400)
-        cache.set(token, '-', timeout=expires_in)
+        cache.set(token, True, timeout=expires_in)
         return JsonResponse(response_data, status=200)
 
     except requests.RequestException as e:
@@ -84,7 +96,7 @@ def exchange_access_token(request):
     """
     INTRA_UID = getenv("INTRA_UID")
     INTRA_SECRET_KEY = getenv("INTRA_SECRET_KEY")
-    URL = "https://api.intra.42.fr/oauth/token"
+    URI = API_URL + "/oauth/token"
     data = {
         "grant_type": "authorization_code",
         "client_id": INTRA_UID,
@@ -93,7 +105,7 @@ def exchange_access_token(request):
         " code": "",
     }
     try:
-        response = requests.post(URL, data=data)
+        response = requests.post(URI, data=data)
         response_data = response.json()
         if response.status_code != 200:
             return JsonResponse(response_data, status=response.status_code)
@@ -115,6 +127,6 @@ def redirect(request):
     42intra로 redirect해서 로그인 할 경우 정보를 반환
     frontend에서 받은 정보를 backend에 전달해야 하는 경우
     """
-    URL = getenv("REDIRECT_URI")
-    r = requests.get(URL)
+    URI = getenv("REDIRECT_URI")
+    r = requests.get(URI)
     return HttpResponse(r.text)
