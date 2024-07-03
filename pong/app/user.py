@@ -1,6 +1,5 @@
 from django.http import HttpResponse, JsonResponse
 from django.core.cache import cache
-from functools import wraps
 from os import getenv
 import requests
 
