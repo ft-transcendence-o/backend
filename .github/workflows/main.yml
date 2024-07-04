@@ -19,7 +19,8 @@ jobs:
           key: ${{ secrets.REMOTE_PRIVATE_KEY }} # ec2 인스턴스 pem key
           port: ${{ secrets.REMOTE_SSH_PORT }} # 접속포트번호 (보통 22)
           script: |
-            cd /pong
+            cd /home/ubuntu/pong/pong
             git pull https://${{ secrets.GIT_USER }}:${{ secrets.GIT_PASSWORD }}@github.com/ft-transcendence-o/backend.git
+            cd /home/ubuntu/pong
             docker compose down
             docker compose up --build
