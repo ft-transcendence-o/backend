@@ -1,0 +1,25 @@
+name: django CD in EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: connect ec2 instance
+        uses: appleboy/ssh-action@v0.1.9
+        with:
+          host: ${{ secrets.REMOTE_IP }}
+          username: ${{ secrets.REMOTE_USER }} # ubuntu 아이디
+          key: ${{ secrets.REMOTE_PRIVATE_KEY }} # ec2 인스턴스 pem key
+          port: ${{ secrets.REMOTE_SSH_PORT }} # 접속포트번호 (보통 22)
+          script: |
+            cd /pong
+            git pull https://${{ secrets.GIT_USER }}:${{ secrets.GIT_PASSWORD }}@github.com/ft-transcendence-o/backend.git
+            docker compose down
+            docker compose up --build
