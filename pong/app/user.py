@@ -43,13 +43,14 @@ def otp_test(request):
     """
     otp URI를 만들고 이를 QRcode로 변환하여 사용
     secret key 값을 user db에 저장한 뒤 꺼내어서 사용
+    :request secret: pyotp secret of user info
     """
     secret = pyotp.random_base32()
     URI = pyotp.totp.TOTP(secret).provisioning_uri(
-        # user email로 입력
+        # TODO: user email로 입력
         name="user@mail.com", issuer_name="pong_game"
     )
-    # need to store seret value in user db
+    # TODO: need to store secret value in user db
     return JsonResponse({"otpauth_uri": URI}, status=200)
 
 
@@ -59,7 +60,7 @@ def validate_otp(request):
     user의 secret값을 사용해서 otp 값이 타당한지 확인
     secret을 db에서 매번 확인하는 것, caching 하는 것 선택
     """
-    # db? caching?
+    # TODO: db? caching?
     secret = 'temp'
     input_pass = request.POST['otp']
     expected_pass = pyotp.TOTP(secret).now() # type str
@@ -138,7 +139,7 @@ def exchange_access_token(request):
         "grant_type": "authorization_code",
         "client_id": INTRA_UID,
         "client_secret": INTRA_SECRET_KEY,
-        # code 값을 받아올 것
+        # TODO: code 값을 받아올 것
         " code": "",
     }
     try:
