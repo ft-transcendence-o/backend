@@ -1,6 +1,8 @@
 from django.http import JsonResponse
 from django.core.cache import cache
 from functools import wraps
+from os import getenv
+import jwt
 
 
 def login_required(func):
@@ -8,9 +10,12 @@ def login_required(func):
     def wrapper(request, *args, **kwargs):
         """
         access_token의 유효성을 검사하는 데코레이터
-        :param request의 헤더에 'Authorization' name을 가진 value 사용
+        :param request의 헤더에 JWT를 사용
         """
-        access_token = request.headers.get('Authorization')
+        encoded_jwt = request.headers.get('jwt')
+        JWT_SECRET = getenv("JWT_SECRET")
+        decoded_jwt = jwt.decode(encoded_jwt, JWT_SECRET, algorithms=["HS256"])
+        access_token = decoded_jwt.get("access_token")
         if not access_token:
             return JsonResponse({'error': 'No access token provided'}, status=401)
 
