@@ -3,6 +3,8 @@ from django.core.cache import cache
 from os import getenv
 import pyotp
 import requests
+import jwt
+
 
 from app.decorators import login_required
 
@@ -88,9 +90,13 @@ def get_token_info(request):
     """
     access_token을 발급 받고 테스트
     expired 및 status_code를 사용해 유효한지 확인
+    :request jwt: acces_token이 담긴 jwt
     """
     URI = API_URL + "/auth/token/info"
-    token = "81a462114352aa75674c78cf816567ad802858724b3494f524f274532ab2cc24"
+    encoded_jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3NfdG9rZW4iOiI0MjQyYjk1YWY4MzBiNzI1MjllZmJkZTA2MDI5OTAxYWEyZTA4YmY3ZDRlYmMzMzIwYjI1ZmIzNGUyMjllZWFhIn0.eIivOHCPQVxtIouADQss3re6yrlSlWtCycGCUKss4QE"
+    JWT_SECRET = getenv("JWT_SECRET")
+    decoded_jwt = jwt.decode(encoded_jwt, JWT_SECRET, algorithms=["HS256"])
+    token = decoded_jwt.get("access_token")
     headers = { "Authorization": "Bearer %s" % token }
     response = requests.get(URI, headers=headers)
     return HttpResponse(response.text)
@@ -102,7 +108,7 @@ def temp_access_token(request):
     """
     INTRA_UID = getenv("INTRA_UID")
     INTRA_SECRET_KEY = getenv("INTRA_SECRET_KEY")
-    URI = API_URL + "oauth/token"
+    URI = API_URL + "/oauth/token"
     data = {
         "grant_type": "client_credentials",
         "client_id": INTRA_UID,
@@ -120,7 +126,10 @@ def temp_access_token(request):
             error_message = {"error": "No access_token or expires_in in response"}
             return JsonResponse(error_message, status=400)
         cache.set(token, True, timeout=expires_in)
-        return JsonResponse(response_data, status=200)
+        # TODO: add jwt_secret to .env file
+        JWT_SECRET = getenv("JWT_SECRET")
+        encoded_jwt = jwt.encode({"access_token": token}, JWT_SECRET, algorithm="HS256")
+        return JsonResponse({"jwt": encoded_jwt}, status=200)
 
     except requests.RequestException as e:
         error_message = {"error": str(e)}
@@ -154,7 +163,10 @@ def exchange_access_token(request):
             error_message = {"error": "No access token in response"}
             return JsonResponse(error_message, status=400)
         cache.set(token, True, timeout=expires_in)
-        return JsonResponse(response_data, status=200)
+        # TODO: add jwt_secret to .env file
+        JWT_SECRET = getenv("JWT_SECRET")
+        encoded_jwt = jwt.encode({"access_token": token}, JWT_SECRET, algorithm="HS256")
+        return JsonResponse({"jwt": encoded_jwt}, status=200)
 
     except requests.RequestException as e:
         error_message = {"error": str(e)}
