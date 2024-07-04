@@ -29,6 +29,10 @@ backend 인증 로직
 2. "code"를 access_token으로 exchange한다.
 3. access_token을 사용하여 /v2/me 에서 정보를 받는다.
 4. email 정보를 사용하여 2FA를 실행한다
+5. 첫번째 로그인의 경우 OTP에 필요한 secret을 생성하고 
+    URI로 QR code를 그린다
+6. QR code를 사용해 google authenticator 등록
+7. OTP 입력 및 검증
 """
 
 API_URL = getenv("API_URL")
