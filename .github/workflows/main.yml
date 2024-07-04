@@ -22,5 +22,5 @@ jobs:
             cd /home/ubuntu/pong/pong
             git pull https://${{ secrets.GIT_USER }}:${{ secrets.GIT_PASSWORD }}@github.com/ft-transcendence-o/backend.git
             cd /home/ubuntu/pong
-            docker compose down
-            docker compose up --build
+            sudo docker compose down
+            sudo docker compose up --build
