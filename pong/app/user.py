@@ -154,7 +154,10 @@ def exchange_access_token(request):
         "client_id": INTRA_UID,
         "client_secret": INTRA_SECRET_KEY,
         # TODO: code 값을 받아올 것
-        " code": "KxuWeKE2MG7NvB2eqwwNwn32kvtTCsA2OSr88aZNzIg",
+        "code": "",
+        "redirect_uri": getenv("REDIRECT_URI"),
+        # TODO: it's needed if when use exchange_token params
+        "state": "hashvalue",
     }
     try:
         response = requests.post(URI, data=data)
