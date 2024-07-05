@@ -67,8 +67,8 @@ def validate_otp(request):
     secret을 db에서 매번 확인하는 것, caching 하는 것 선택
     """
     # TODO: db? caching?
-    secret = 'temp'
-    input_pass = request.POST['otp']
+    secret = "temp"
+    input_pass = request.POST.get("otp")
     expected_pass = pyotp.TOTP(secret).now() # type str
     if input_pass != expected_pass:
         return HttpResponse("bad")
