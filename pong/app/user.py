@@ -1,5 +1,6 @@
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, HttpResponseRedirect
 from django.core.cache import cache
+from urllib.parse import urlencode
 from os import getenv
 import pyotp
 import requests
@@ -153,7 +154,7 @@ def exchange_access_token(request):
         "client_id": INTRA_UID,
         "client_secret": INTRA_SECRET_KEY,
         # TODO: code 값을 받아올 것
-        " code": "",
+        " code": "KxuWeKE2MG7NvB2eqwwNwn32kvtTCsA2OSr88aZNzIg",
     }
     try:
         response = requests.post(URI, data=data)
@@ -179,8 +180,17 @@ def exchange_access_token(request):
 def redirect(request):
     """
     42intra로 redirect해서 로그인 할 경우 정보를 반환
-    frontend에서 받은 정보를 backend에 전달해야 하는 경우
+    frontend에서 받은 정보를 backend에 전달해야 하는 로직
     """
-    URI = getenv("REDIRECT_URI")
-    r = requests.get(URI)
-    return HttpResponse(r.text)
+    params = {
+        "client_id": getenv("INTRA_UID"),
+        "redirect_uri": getenv("REDIRECT_URI"),
+        "response_type": "code",
+        "scope": "public",
+        # TODO: need hash value
+        "state": "hashvalue",
+    }
+    base_url = "https://api.intra.42.fr/oauth/authorize"
+    encoded_params = urlencode(params)
+    url = f"{base_url}?{encoded_params}"
+    return HttpResponseRedirect(url)
