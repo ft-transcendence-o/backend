@@ -2,7 +2,7 @@ FROM python:3.11
 
 RUN mkdir /app
 WORKDIR /app
-COPY . .
+COPY ./pong .
 
 RUN pip install -r ./requirements.txt
 RUN pip install uvicorn gunicorn
