@@ -155,8 +155,7 @@ def exchange_access_token(request):
         # TODO: code 값을 받아올 것
         "code": "",
         "redirect_uri": getenv("REDIRECT_URI"),
-        # TODO: it's needed if when use exchange_token params
-        "state": "hashvalue",
+        "state": getenv("STATE"),
     }
     try:
         response = requests.post(URI, data=data)
@@ -189,8 +188,7 @@ def redirect(request):
         "redirect_uri": getenv("REDIRECT_URI"),
         "response_type": "code",
         "scope": "public",
-        # TODO: need hash value
-        "state": "hashvalue",
+        "state": getenv("STATE"),
     }
     base_url = "https://api.intra.42.fr/oauth/authorize"
     encoded_params = urlencode(params)
