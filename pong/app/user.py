@@ -130,7 +130,6 @@ def temp_access_token(request):
             error_message = {"error": "No access_token or expires_in in response"}
             return JsonResponse(error_message, status=400)
         cache.set(token, True, timeout=expires_in)
-        # TODO: add jwt_secret to .env file
         JWT_SECRET = getenv("JWT_SECRET")
         encoded_jwt = jwt.encode({"access_token": token}, JWT_SECRET, algorithm="HS256")
         return JsonResponse({"jwt": encoded_jwt}, status=200)
