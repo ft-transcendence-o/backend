@@ -51,12 +51,12 @@ def otp_test(request):
     secret key 값을 user db에 저장한 뒤 꺼내어서 사용
     :request secret: pyotp secret of user info
     """
+    # TODO: need to store secret value in user db
     secret = pyotp.random_base32()
     URI = pyotp.totp.TOTP(secret).provisioning_uri(
         # TODO: user email로 입력
         name="user@mail.com", issuer_name="pong_game"
     )
-    # TODO: need to store secret value in user db
     return JsonResponse({"otpauth_uri": URI}, status=200)
 
 
