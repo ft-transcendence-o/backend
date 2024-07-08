@@ -1,11 +1,10 @@
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, HttpResponseRedirect
 from django.core.cache import cache
 from urllib.parse import urlencode
 from os import getenv
 import pyotp
 import requests
 import jwt
-
 
 from app.decorators import login_required
 
@@ -196,4 +195,4 @@ def redirect(request):
     base_url = "https://api.intra.42.fr/oauth/authorize"
     encoded_params = urlencode(params)
     url = f"{base_url}?{encoded_params}"
-    return JsonResponse(url, status=200)
+    return HttpResponseRedirect(url)
