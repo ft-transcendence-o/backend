@@ -108,7 +108,9 @@ def get_token_info(request):
 
 def temp_access_token(request):
     """
-    테스트용 grant_type == client_credentials
+    테스트용 exchange_access_token
+    grant_type이 client_credentials으로
+    제한된 사용이 가능한 access_token 발급
     """
     INTRA_UID = getenv("INTRA_UID")
     INTRA_SECRET_KEY = getenv("INTRA_SECRET_KEY")
