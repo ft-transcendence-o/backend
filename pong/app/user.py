@@ -84,8 +84,11 @@ def get_user_info(request):
     access_token을 활용하여 user의 정보를 받아온다.
     """
     URI = API_URL + "/v2/me"
-    token = "81a462114352aa75674c78cf816567ad802858724b3494f524f274532ab2cc24"
-    headers = { "Authorization": "Bearer %s" % token }
+    encoded_jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3NfdG9rZW4iOiIzNTYyNDUxMjVhNjQ4YzY0YTg0YmY3MjI1MDhjY2VkNWEzOTQ1Njg1YzQ4MzEzZWNhNDFhYTdkYjI4N2U2YTVhIn0.T6D3v7fq-0PK-G1y2tc_I0hqav1YJpbHidbXCXBxqfk"
+    JWT_SECRET = getenv("JWT_SECRET")
+    decoded_jwt = jwt.decode(encoded_jwt, JWT_SECRET, algorithms=["HS256"])
+    access_token = decoded_jwt.get("access_token")
+    headers = { "Authorization": "Bearer %s" % decoded_jwt.get("access_token") }
     response = requests.get(URI, headers=headers)
     return HttpResponse(response.text)
 
