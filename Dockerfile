@@ -4,12 +4,15 @@ RUN mkdir /app
 WORKDIR /app
 COPY ./pong .
 
-RUN pip install -r ./requirements.txt
-RUN pip install uvicorn gunicorn
+COPY ./conf/requirements.txt /tmp
+COPY ./conf/start-django.sh /tmp
 
-WORKDIR /app/pong
-RUN echo "gunicorn --bind 0.0.0.0:8000 --workers 3 --worker-class uvicorn.workers.UvicornWorker pong.asgi:application" > start.sh
-RUN chmod +x start.sh
+RUN chmod +x /tmp/start-django.sh
+RUN chmod +x /tmp/requirements.txt
+
+RUN pip install -r /tmp/requirements.txt
 
 EXPOSE 8000
-CMD /app/pong/start.sh
+
+# WORKDIR /app/pong
+CMD ["/bin/sh", "-c", "/tmp/start-django.sh"]
