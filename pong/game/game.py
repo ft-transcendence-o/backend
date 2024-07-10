@@ -1,19 +1,11 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from django.core.paginator import Paginator
 from .models import Game, Tournament
 import json
 import logging
 
 logger = logging.getLogger(__name__)
-
-def json_response(data, status=200):
-    return JsonResponse(data, status=status)
-
-def handle_exception(e, log_message):
-    logger.error(f'{log_message}: {str(e)}')
-    return json_response({"error": str(e)}, status=400)
 
 def validate_game(data, mode):
     errors = {}
@@ -141,7 +133,7 @@ def tournament(request):
                         tournament_errors[game_key] = game_errors
 
             if tournament_errors:
-                return json_response({"errors": tournament_errors}, status=400)
+                return JsonResponse({"errors": tournament_errors}, status=400)
 
             tournament = Tournament.objects.create()
             for i in range(1, 4):
@@ -150,8 +142,9 @@ def tournament(request):
                 game = Game.objects.create(tournament=tournament, **game_data)
                 setattr(tournament, game_key, game)
             tournament.save()
-            return json_response({"status": "Tournament created successfully", "id": tournament.id}, status=201)
+            return JsonResponse({"status": "Tournament created successfully", "id": tournament.id}, status=201)
         except json.JSONDecodeError:
-            return json_response({"error": "Invalid JSON"}, status=400)
+            return JsonResponse({"error": "Invalid JSON"}, status=400)
         except Exception as e:
-            return handle_exception(e, 'Error creating tournament')
+                logger.error(f'error: {str(e)}')
+                return JsonResponse({"error": str(e)}, status=400)
