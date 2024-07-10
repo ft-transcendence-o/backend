@@ -209,7 +209,7 @@ def redirect(request):
         "scope": "public",
         "state": getenv("STATE"),
     }
-    base_url = "https://api.intra.42.fr/oauth/authorize"
+    base_url = API_URL + "/oauth/authorize"
     encoded_params = urlencode(params)
     url = f"{base_url}?{encoded_params}"
     return HttpResponseRedirect(url)
