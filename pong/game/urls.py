@@ -1,11 +1,7 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views import GameViewSet, TournamentViewSet
-
-router = DefaultRouter()
-router.register(r'games', GameViewSet)
-router.register(r'tournaments', TournamentViewSet)
+from django.urls import path
+from .game import game, tournament
 
 urlpatterns = [
-    path('api/', include(router.urls)),
+    path('api/game/', game),
+    path('api/tournament/', tournament),
 ]
