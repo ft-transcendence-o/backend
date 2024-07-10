@@ -4,15 +4,19 @@ RUN mkdir /app
 WORKDIR /app
 COPY ./pong .
 
-COPY ./conf/requirements.txt /tmp
-COPY ./conf/start-django.sh /tmp
+RUN pip install -r ./requirements.txt
 
-RUN chmod +x /tmp/start-django.sh
-RUN chmod +x /tmp/requirements.txt
+WORKDIR /app/pong
 
-RUN pip install -r /tmp/requirements.txt
+RUN echo '#!/bin/bash\n\n\
+python manage.py makemigrations\n\
+python manage.py migrate\n\
+python manage.py collectstatic --noinput\n\
+gunicorn --bind 0.0.0.0:8000 --workers 3 --worker-class uvicorn.workers.UvicornWorker pong.asgi:application' > start.sh
+
+RUN chmod +x start.sh
 
 EXPOSE 8000
 
-# WORKDIR /app/pong
-CMD ["/bin/sh", "-c", "/tmp/start-django.sh"]
+CMD ["/bin/sh", "-c", "/app/app/start.sh"]
+
