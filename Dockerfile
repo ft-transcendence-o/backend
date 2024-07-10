@@ -5,11 +5,18 @@ WORKDIR /app
 COPY ./pong .
 
 RUN pip install -r ./requirements.txt
-RUN pip install uvicorn gunicorn
 
 WORKDIR /app/pong
-RUN echo "gunicorn --bind 0.0.0.0:8000 --workers 3 --worker-class uvicorn.workers.UvicornWorker pong.asgi:application" > start.sh
+
+RUN echo '#!/bin/bash\n\n\
+python manage.py makemigrations\n\
+python manage.py migrate\n\
+python manage.py collectstatic --noinput\n\
+gunicorn --bind 0.0.0.0:8000 --workers 3 --worker-class uvicorn.workers.UvicornWorker pong.asgi:application' > start.sh
+
 RUN chmod +x start.sh
 
 EXPOSE 8000
-CMD /app/pong/start.sh
+
+CMD ["/bin/sh", "-c", "/app/pong/start.sh"]
+
