@@ -18,5 +18,5 @@ RUN chmod +x start.sh
 
 EXPOSE 8000
 
-CMD ["/bin/sh", "-c", "/app/app/start.sh"]
+CMD ["/bin/sh", "-c", "/app/pong/start.sh"]
 
