@@ -7,6 +7,7 @@ import requests
 import jwt
 
 from app.decorators import login_required
+from app.models import User
 
 """
 42 OAuth2의 흐름
@@ -90,7 +91,21 @@ def get_user_info(request):
     access_token = decoded_jwt.get("access_token")
     headers = { "Authorization": "Bearer %s" % decoded_jwt.get("access_token") }
     response = requests.get(URI, headers=headers)
-    return HttpResponse(response.text)
+    if response.status_code == 200:
+        data = response.json()
+        s = pyotp.random_base32(),
+        user = User(
+            id = data['id'],
+            email = data['email'],
+            login = data['login'],
+            usual_full_name = data['usual_full_name'],
+            secret = s,
+            image_link = data['image']['link'],
+        )
+        user.save()
+        cache.set(data['id'], s, timeout=60)
+        return HttpResponse(response.text)
+    return JsonResponse(response.json(), status=response.status_code)
 
 
 def get_token_info(request):
