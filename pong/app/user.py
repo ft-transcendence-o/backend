@@ -5,9 +5,10 @@ from os import getenv
 import pyotp
 import requests
 import jwt
+from datetime import timezone
 
 from app.decorators import login_required
-from app.models import User
+from app.models import User, OTPSecret
 
 """
 42 OAuth2의 흐름
@@ -36,9 +37,12 @@ backend 인증 로직
 7. OTP 입력 및 검증
 """
 
+CACHE_TIMEOUT = 900  # 15분
+MAX_ATTEMPTS = 5
 API_URL = getenv("API_URL")
 
 """
+TODO
 OTP 주의사항
 1. HTTPS 통신 사용
 2. OTP브루트포스 방지 (타임스탬프 확인)
@@ -213,3 +217,74 @@ def redirect(request):
     encoded_params = urlencode(params)
     url = f"{base_url}?{encoded_params}"
     return HttpResponseRedirect(url)
+
+def get_otp_data(user_id):
+    """
+    otp data를 받아옴
+    cache 확인 후 DB 확인
+    없을 경우 OTP 정보 입력 필요
+    """
+    cache_key = f"otp_data_{user_id}"
+    data = cache.get(cache_key)
+    if data is None:
+        try:
+            otp_secret = OTPSecret.objects.get(user_id=user_id)
+            data = {
+                'secret': otp_secret.secret,
+                'attempts': otp_secret.attempts,
+                'last_attempt': otp_secret.last_attempt,
+                'is_locked': otp_secret.is_locked
+            }
+            cache.set(cache_key, data, CACHE_TIMEOUT)
+        except OTPSecret.DoesNotExist:
+            return None
+    return data
+
+def update_otp_data(user_id, data):
+    """
+    OTP 시도 횟수 및 시간 저장
+    5회 이상 시도 시 계정 잠금 및 초기화 시간 900초 소요
+    """
+    cache_key = f"otp_data_{user_id}"
+    cache.set(cache_key, data, CACHE_TIMEOUT)
+
+    if data['attempts'] % 5 == 0 or data['is_locked']:
+        OTPSecret.objects.filter(user_id=user_id).update(
+            attempts=data['attempts'],
+            last_attempt=data['last_attempt'],
+            is_locked=data['is_locked']
+        )
+
+def verify_otp(user_id, otp_code):
+    """
+    OTP 시도 할 경우 함수
+    OTP 정보 확인 및 900초 지났을 경우 시도 횟수 초기화
+    계정 잠금, 정보 없음(?), OTP인증 실패 확인
+    """
+    otp_data = get_otp_data(user_id)
+    if not otp_data:
+        return False, "OTP 설정을 찾을 수 없습니다."
+
+    if otp_data['is_locked']:
+        return False, "계정이 잠겼습니다. 관리자에게 문의하세요."
+
+    now = timezone.now()
+    if otp_data['last_attempt'] and (now - otp_data['last_attempt']).total_seconds() > CACHE_TIMEOUT:
+        otp_data['attempts'] = 0
+
+    otp_data['attempts'] += 1
+    otp_data['last_attempt'] = now
+
+    if otp_data['attempts'] >= MAX_ATTEMPTS:
+        otp_data['is_locked'] = True
+        update_otp_data(user_id, otp_data)
+        return False, "최대 시도 횟수를 초과했습니다. 15분 후에 다시 시도하세요."
+
+    if pyotp.TOTP(otp_data['secret']).verify(otp_code):
+        otp_data['attempts'] = 0
+        otp_data['is_locked'] = False
+        update_otp_data(user_id, otp_data)
+        return True, "OTP 인증 성공"
+
+    update_otp_data(user_id, otp_data)
+    return False, f"잘못된 OTP 코드입니다. 남은 시도 횟수: {MAX_ATTEMPTS - otp_data['attempts']}"
