@@ -36,7 +36,7 @@ backend 인증 로직
 6. QR code를 사용해 google authenticator 등록
 7. OTP 입력 및 검증
 """
-
+TOKEN_EXIRES = 7200
 CACHE_TIMEOUT = 900  # 15분
 MAX_ATTEMPTS = 5
 API_URL = getenv("API_URL")
@@ -97,17 +97,23 @@ def get_user_info(request):
     response = requests.get(URI, headers=headers)
     if response.status_code == 200:
         data = response.json()
-        s = pyotp.random_base32(),
-        user = User(
+        user, _ = User.objects.get_or_create(
             id = data['id'],
-            email = data['email'],
-            login = data['login'],
-            usual_full_name = data['usual_full_name'],
-            secret = s,
-            image_link = data['image']['link'],
+            defaults = {
+                'email': data['email'],
+                'login': data['login'],
+                'usual_full_name': data['usual_full_name'],
+                'image_link': data['image']['link'],
+            }
         )
-        user.save()
-        cache.set(data['id'], s, timeout=60)
+        user_data = {
+            'id': user.id,
+            'email': user.email,
+            'login': user.login,
+            'usual_full_name': user.usual_full_name,
+            'image_link': user.image_link,
+        }
+        cache.set(f'user_data_{access_token}', user_data, TOKEN_EXIRES)
         return HttpResponse(response.text)
     return JsonResponse(response.json(), status=response.status_code)
 
@@ -153,7 +159,6 @@ def temp_access_token(request):
         if not token or not expires_in:
             error_message = {"error": "No access_token or expires_in in response"}
             return JsonResponse(error_message, status=400)
-        cache.set(token, True, timeout=expires_in)
         JWT_SECRET = getenv("JWT_SECRET")
         encoded_jwt = jwt.encode({"access_token": token}, JWT_SECRET, algorithm="HS256")
         return JsonResponse({"jwt": encoded_jwt}, status=200)
