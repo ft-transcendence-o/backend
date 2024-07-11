@@ -6,5 +6,12 @@ class User(models.Model):
     email = models.EmailField(unique=True)
     login = models.CharField(max_length=50, unique=True)
     usual_full_name = models.CharField(max_length=50)
-    secret = models.CharField(max_length=255)
     image_link = models.URLField(max_length=255)
+
+
+class OTPSecret(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    secret = models.CharField(max_length=50)
+    attempts = models.IntegerField(default=0)
+    last_attempt = models.DateTimeField(null=True)
+    is_locked = models.BooleanField(default=False)
