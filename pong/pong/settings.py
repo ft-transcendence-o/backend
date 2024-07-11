@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 from dotenv import load_dotenv
-from os import getenv
+from os import getenv, path
 
 import string
 import random
@@ -142,7 +142,7 @@ CACHES = {
     }
 }
 
-LOG_DIR = os.path.join(BASE_DIR, 'logs')
+LOG_DIR = path.join(BASE_DIR, 'logs')
 
 LOGGING = {
     'version': 1,
@@ -157,7 +157,7 @@ LOGGING = {
         'file': {
             'level': 'DEBUG',
             'class': 'logging.FileHandler',
-            'filename': os.path.join(LOG_DIR, 'debug.log'),
+            'filename': path.join(LOG_DIR, 'debug.log'),
             'formatter': 'verbose',
         },
     },
