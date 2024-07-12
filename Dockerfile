@@ -6,7 +6,9 @@ COPY ./pong .
 
 RUN pip install -r ./requirements.txt
 
-WORKDIR /app/pong
+WORKDIR /app/
+RUN mkdir logs
+RUN touch logs/debug.log
 
 RUN echo '#!/bin/bash\n\n\
 python manage.py makemigrations\n\
