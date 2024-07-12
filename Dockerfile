@@ -12,6 +12,7 @@ RUN touch logs/debug.log
 
 RUN echo '#!/bin/bash\n\n\
 python manage.py makemigrations\n\
+python manage.py makemigrations game\n\
 python manage.py migrate\n\
 python manage.py collectstatic --noinput\n\
 gunicorn --bind 0.0.0.0:8000 --workers 3 --worker-class uvicorn.workers.UvicornWorker pong.asgi:application' > start.sh
