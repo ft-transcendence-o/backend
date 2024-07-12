@@ -10,19 +10,11 @@ WORKDIR /app/pong
 RUN mkdir logs
 RUN touch logs/debug.log
 
-cat << EOF > /tmp/yourfilehere
-These contents will be written to the file.
-        This line is indented.
-EOF
-
-RUN cat << EOF > start.sh
-#!/bin/bash
-
-python manage.py makemigrations
-python manage.py migrate
-python manage.py collectstatic --noinput
-gunicorn --bind 0.0.0.0:8000 --workers 3 --worker-class uvicorn.workers.UvicornWorker pong.asgi:application
-EOF
+RUN echo '#!/bin/bash\n\n\
+python manage.py makemigrations\n\
+python manage.py migrate\n\
+python manage.py collectstatic --noinput\n\
+gunicorn --bind 0.0.0.0:8000 --workers 3 --worker-class uvicorn.workers.UvicornWorker pong.asgi:application' > start.sh
 
 RUN chmod +x start.sh
 
