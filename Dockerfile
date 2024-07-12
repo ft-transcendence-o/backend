@@ -6,7 +6,7 @@ COPY ./pong .
 
 RUN pip install -r ./requirements.txt
 
-WORKDIR /app/
+WORKDIR /app/pong
 RUN mkdir logs
 RUN touch logs/debug.log
 
