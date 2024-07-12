@@ -1,5 +1,6 @@
 from django.http import HttpResponse, JsonResponse, HttpResponseRedirect
 from django.core.cache import cache
+from django.views import View
 from urllib.parse import urlencode
 from os import getenv
 import pyotp
@@ -7,8 +8,8 @@ import requests
 import jwt
 from datetime import timezone
 
-from app.decorators import login_required
-from app.models import User, OTPSecret
+from authentication.decorators import login_required
+from authentication.models import User, OTPSecret
 
 """
 42 OAuth2의 흐름
