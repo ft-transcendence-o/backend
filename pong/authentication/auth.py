@@ -41,6 +41,10 @@ TOKEN_EXIRES = 7200
 CACHE_TIMEOUT = 900  # 15분
 MAX_ATTEMPTS = 5
 API_URL = getenv("API_URL")
+JWT_SECRET = getenv("JWT_SECRET")
+INTRA_UID = getenv("INTRA_UID")
+INTRA_SECRET_KEY = getenv("INTRA_SECRET_KEY")
+
 
 """
 TODO
@@ -91,7 +95,6 @@ def get_user_info(request):
     """
     URI = API_URL + "/v2/me"
     encoded_jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3NfdG9rZW4iOiIzNTYyNDUxMjVhNjQ4YzY0YTg0YmY3MjI1MDhjY2VkNWEzOTQ1Njg1YzQ4MzEzZWNhNDFhYTdkYjI4N2U2YTVhIn0.T6D3v7fq-0PK-G1y2tc_I0hqav1YJpbHidbXCXBxqfk"
-    JWT_SECRET = getenv("JWT_SECRET")
     decoded_jwt = jwt.decode(encoded_jwt, JWT_SECRET, algorithms=["HS256"])
     access_token = decoded_jwt.get("access_token")
     headers = { "Authorization": "Bearer %s" % decoded_jwt.get("access_token") }
@@ -127,7 +130,6 @@ def get_token_info(request):
     """
     URI = API_URL + "/auth/token/info"
     encoded_jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3NfdG9rZW4iOiI0MjQyYjk1YWY4MzBiNzI1MjllZmJkZTA2MDI5OTAxYWEyZTA4YmY3ZDRlYmMzMzIwYjI1ZmIzNGUyMjllZWFhIn0.eIivOHCPQVxtIouADQss3re6yrlSlWtCycGCUKss4QE"
-    JWT_SECRET = getenv("JWT_SECRET")
     decoded_jwt = jwt.decode(encoded_jwt, JWT_SECRET, algorithms=["HS256"])
     token = decoded_jwt.get("access_token")
     headers = { "Authorization": "Bearer %s" % token }
@@ -141,8 +143,7 @@ def temp_access_token(request):
     grant_type이 client_credentials으로
     제한된 사용이 가능한 access_token 발급
     """
-    INTRA_UID = getenv("INTRA_UID")
-    INTRA_SECRET_KEY = getenv("INTRA_SECRET_KEY")
+
     URI = API_URL + "/oauth/token"
     data = {
         "grant_type": "client_credentials",
@@ -175,8 +176,6 @@ def exchange_access_token(request):
     access_token을 cache에 저장해서 
     expires_in을 체크하는 방식
     """
-    INTRA_UID = getenv("INTRA_UID")
-    INTRA_SECRET_KEY = getenv("INTRA_SECRET_KEY")
     URI = API_URL + "/oauth/token"
     data = {
         "grant_type": "authorization_code",
@@ -198,7 +197,6 @@ def exchange_access_token(request):
         if not token:
             error_message = {"error": "No access token in response"}
             return JsonResponse(error_message, status=400)
-        JWT_SECRET = getenv("JWT_SECRET")
         encoded_jwt = jwt.encode({"access_token": token}, JWT_SECRET, algorithm="HS256")
         return JsonResponse({"jwt": encoded_jwt}, status=200)
 

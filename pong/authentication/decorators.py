@@ -5,6 +5,9 @@ from os import getenv
 import jwt
 
 
+JWT_SECRET = getenv("JWT_SECRET")
+
+
 def login_required(func):
     @wraps(func)
     def wrapper(request, *args, **kwargs):
@@ -13,7 +16,6 @@ def login_required(func):
         :param request의 헤더에 JWT를 사용
         """
         encoded_jwt = request.headers.get('jwt')
-        JWT_SECRET = getenv("JWT_SECRET")
         decoded_jwt = jwt.decode(encoded_jwt, JWT_SECRET, algorithms=["HS256"])
         access_token = decoded_jwt.get("access_token")
         if not access_token:
