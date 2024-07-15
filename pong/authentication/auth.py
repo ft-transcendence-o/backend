@@ -92,6 +92,8 @@ def need_login(request):
 def get_user_info(request):
     """
     access_token을 활용하여 user의 정보를 받아온다.
+    정보를 받아와서 db에 있는지 확인한 후 없을 경우 생성
+    OTP Secret값 생성도 필요
     """
     URI = API_URL + "/v2/me"
     encoded_jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3NfdG9rZW4iOiIzNTYyNDUxMjVhNjQ4YzY0YTg0YmY3MjI1MDhjY2VkNWEzOTQ1Njg1YzQ4MzEzZWNhNDFhYTdkYjI4N2U2YTVhIn0.T6D3v7fq-0PK-G1y2tc_I0hqav1YJpbHidbXCXBxqfk"
