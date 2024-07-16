@@ -56,6 +56,103 @@ OTP 주의사항
 3. 스로틀 속도 제한
 """
 
+class OAuthView(View):
+
+
+    # TODO: code를 access_token으로 바꾼 후 get_user_info 사용 및 cache저장
+    def get(self, request):
+        """
+        frontend에서 /oauth/authorize 경로로 보낸 후 redirection되어서 오는 곳.
+        querystring으로 code를 가져온 후 code를 access_token으로 교환
+        access_token을 cache에 저장해서 expires_in을 체크한다.
+        """
+        code = request.GET.get('code')
+        if not code:
+            return JsonResponse({"error": "No code value in querystring"}, status=400)
+        URI = API_URL + "/oauth/token"
+        data = {
+            "grant_type": "authorization_code",
+            "client_id": INTRA_UID,
+            "client_secret": INTRA_SECRET_KEY,
+            # TODO: code 값을 받아올 것
+            "code": code,
+            "redirect_uri": getenv("REDIRECT_URI"),
+            "state": getenv("STATE"),
+        }
+        try:
+            response = requests.post(URI, data=data)
+            response_data = response.json()
+            if response.status_code != 200:
+                return JsonResponse(response_data, status=response.status_code)
+
+            token = response_data.get("access_token")
+            # expires_in = response_data.get("expires_in")
+            if not token:
+                error_message = {"error": "No access token in response"}
+                return JsonResponse(error_message, status=400)
+            encoded_jwt = jwt.encode({"access_token": token}, JWT_SECRET, algorithm="HS256")
+            return JsonResponse({"jwt": encoded_jwt}, status=200)
+
+        except requests.RequestException as e:
+            error_message = {"error": str(e)}
+            return JsonResponse(error_message, status=500)
+
+
+
+def redirect(self):
+    """
+    42intra로 redirect해서 로그인 할 경우 정보를 반환
+    frontend에서 받은 정보를 backend에 전달해야 하는 로직
+    """
+    params = {
+        "client_id": INTRA_UID,
+        "redirect_uri": REDIRECT_URI,
+        "response_type": "code",
+        "scope": "public",
+        "state": STATE,
+    }
+    base_url = API_URL + "/oauth/authorize"
+    encoded_params = urlencode(params)
+    URI = f"{base_url}?{encoded_params}"
+    response = requests.get(URI)
+    print(response.text)
+    return HttpResponseRedirect(URI)
+
+
+def get_user_info(request):
+    """
+    access_token을 활용하여 user의 정보를 받아온다.
+    정보를 받아와서 db에 있는지 확인한 후 없을 경우 생성
+    OTP Secret값 생성도 필요
+    """
+    URI = API_URL + "/v2/me"
+    encoded_jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3NfdG9rZW4iOiIzNTYyNDUxMjVhNjQ4YzY0YTg0YmY3MjI1MDhjY2VkNWEzOTQ1Njg1YzQ4MzEzZWNhNDFhYTdkYjI4N2U2YTVhIn0.T6D3v7fq-0PK-G1y2tc_I0hqav1YJpbHidbXCXBxqfk"
+    decoded_jwt = jwt.decode(encoded_jwt, JWT_SECRET, algorithms=["HS256"])
+    access_token = decoded_jwt.get("access_token")
+    headers = { "Authorization": "Bearer %s" % decoded_jwt.get("access_token") }
+    response = requests.get(URI, headers=headers)
+    if response.status_code == 200:
+        data = response.json()
+        user, _ = User.objects.get_or_create(
+            id = data['id'],
+            defaults = {
+                'email': data['email'],
+                'login': data['login'],
+                'usual_full_name': data['usual_full_name'],
+                'image_link': data['image']['link'],
+            }
+        )
+        user_data = {
+            'id': user.id,
+            'email': user.email,
+            'login': user.login,
+            'usual_full_name': user.usual_full_name,
+            'image_link': user.image_link,
+        }
+        cache.set(f'user_data_{access_token}', user_data, TOKEN_EXIRES)
+        return HttpResponse(response.text)
+    return JsonResponse(response.json(), status=response.status_code)
+
 # @login_required
 def otp_test(request):
     """
@@ -91,39 +188,7 @@ def validate_otp(request):
 def need_login(request):
     return HttpResponse("Can you join")
 
-def get_user_info(request):
-    """
-    access_token을 활용하여 user의 정보를 받아온다.
-    정보를 받아와서 db에 있는지 확인한 후 없을 경우 생성
-    OTP Secret값 생성도 필요
-    """
-    URI = API_URL + "/v2/me"
-    encoded_jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3NfdG9rZW4iOiIzNTYyNDUxMjVhNjQ4YzY0YTg0YmY3MjI1MDhjY2VkNWEzOTQ1Njg1YzQ4MzEzZWNhNDFhYTdkYjI4N2U2YTVhIn0.T6D3v7fq-0PK-G1y2tc_I0hqav1YJpbHidbXCXBxqfk"
-    decoded_jwt = jwt.decode(encoded_jwt, JWT_SECRET, algorithms=["HS256"])
-    access_token = decoded_jwt.get("access_token")
-    headers = { "Authorization": "Bearer %s" % decoded_jwt.get("access_token") }
-    response = requests.get(URI, headers=headers)
-    if response.status_code == 200:
-        data = response.json()
-        user, _ = User.objects.get_or_create(
-            id = data['id'],
-            defaults = {
-                'email': data['email'],
-                'login': data['login'],
-                'usual_full_name': data['usual_full_name'],
-                'image_link': data['image']['link'],
-            }
-        )
-        user_data = {
-            'id': user.id,
-            'email': user.email,
-            'login': user.login,
-            'usual_full_name': user.usual_full_name,
-            'image_link': user.image_link,
-        }
-        cache.set(f'user_data_{access_token}', user_data, TOKEN_EXIRES)
-        return HttpResponse(response.text)
-    return JsonResponse(response.json(), status=response.status_code)
+
 
 
 def get_token_info(request):
@@ -173,57 +238,7 @@ def temp_access_token(request):
         error_message = {"error": str(e)}
         return JsonResponse(error_message, status=500)
 
-# TODO: code를 access_token으로 바꾼 후 get_user_info 사용 및 cache저장
-def exchange_access_token(request):
-    """
-    code를 access_token으로 교환
-    access_token을 cache에 저장해서 
-    expires_in을 체크하는 방식
-    """
-    URI = API_URL + "/oauth/token"
-    data = {
-        "grant_type": "authorization_code",
-        "client_id": INTRA_UID,
-        "client_secret": INTRA_SECRET_KEY,
-        # TODO: code 값을 받아올 것
-        "code": "",
-        "redirect_uri": getenv("REDIRECT_URI"),
-        "state": getenv("STATE"),
-    }
-    try:
-        response = requests.post(URI, data=data)
-        response_data = response.json()
-        if response.status_code != 200:
-            return JsonResponse(response_data, status=response.status_code)
-        
-        token = response_data.get("access_token")
-        # expires_in = response_data.get("expires_in")
-        if not token:
-            error_message = {"error": "No access token in response"}
-            return JsonResponse(error_message, status=400)
-        encoded_jwt = jwt.encode({"access_token": token}, JWT_SECRET, algorithm="HS256")
-        return JsonResponse({"jwt": encoded_jwt}, status=200)
 
-    except requests.RequestException as e:
-        error_message = {"error": str(e)}
-        return JsonResponse(error_message, status=500)
-
-def redirect(request):
-    """
-    42intra로 redirect해서 로그인 할 경우 정보를 반환
-    frontend에서 받은 정보를 backend에 전달해야 하는 로직
-    """
-    params = {
-        "client_id": getenv("INTRA_UID"),
-        "redirect_uri": getenv("REDIRECT_URI"),
-        "response_type": "code",
-        "scope": "public",
-        "state": getenv("STATE"),
-    }
-    base_url = API_URL + "/oauth/authorize"
-    encoded_params = urlencode(params)
-    url = f"{base_url}?{encoded_params}"
-    return HttpResponseRedirect(url)
 
 def get_otp_data(user_id):
     """
