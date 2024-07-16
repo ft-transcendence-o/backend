@@ -69,18 +69,16 @@ class OAuthView(View):
         code = request.GET.get('code')
         if not code:
             return JsonResponse({"error": "No code value in querystring"}, status=400)
-        URI = API_URL + "/oauth/token"
         data = {
             "grant_type": "authorization_code",
             "client_id": INTRA_UID,
             "client_secret": INTRA_SECRET_KEY,
-            # TODO: code 값을 받아올 것
             "code": code,
             "redirect_uri": getenv("REDIRECT_URI"),
             "state": getenv("STATE"),
         }
         try:
-            response = requests.post(URI, data=data)
+            response = requests.post(f'{API_URL}/oauth/token', data=data)
             response_data = response.json()
             if response.status_code != 200:
                 return JsonResponse(response_data, status=response.status_code)
@@ -125,12 +123,11 @@ def get_user_info(request):
     정보를 받아와서 db에 있는지 확인한 후 없을 경우 생성
     OTP Secret값 생성도 필요
     """
-    URI = API_URL + "/v2/me"
     encoded_jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3NfdG9rZW4iOiIzNTYyNDUxMjVhNjQ4YzY0YTg0YmY3MjI1MDhjY2VkNWEzOTQ1Njg1YzQ4MzEzZWNhNDFhYTdkYjI4N2U2YTVhIn0.T6D3v7fq-0PK-G1y2tc_I0hqav1YJpbHidbXCXBxqfk"
     decoded_jwt = jwt.decode(encoded_jwt, JWT_SECRET, algorithms=["HS256"])
     access_token = decoded_jwt.get("access_token")
     headers = { "Authorization": "Bearer %s" % decoded_jwt.get("access_token") }
-    response = requests.get(URI, headers=headers)
+    response = requests.get(f'{API_ULR}/v2/me', headers=headers)
     if response.status_code == 200:
         data = response.json()
         user, _ = User.objects.get_or_create(
@@ -202,7 +199,7 @@ def get_token_info(request):
     decoded_jwt = jwt.decode(encoded_jwt, JWT_SECRET, algorithms=["HS256"])
     token = decoded_jwt.get("access_token")
     headers = { "Authorization": "Bearer %s" % token }
-    response = requests.get(URI, headers=headers)
+    response = requests.get(f'{API_URL}/auth/token/info', headers=headers)
     return HttpResponse(response.text)
 
 
@@ -213,14 +210,13 @@ def temp_access_token(request):
     제한된 사용이 가능한 access_token 발급
     """
 
-    URI = API_URL + "/oauth/token"
     data = {
         "grant_type": "client_credentials",
         "client_id": INTRA_UID,
         "client_secret": INTRA_SECRET_KEY,
     }
     try:
-        response = requests.post(URI, data=data)
+        response = requests.post(f'{API_URL}/oauth/token', data=data)
         response_data = response.json()
         if response.status_code != 200:
             return JsonResponse(response_data, status=response.status_code)
