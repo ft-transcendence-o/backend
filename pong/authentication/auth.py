@@ -44,6 +44,8 @@ API_URL = getenv("API_URL")
 JWT_SECRET = getenv("JWT_SECRET")
 INTRA_UID = getenv("INTRA_UID")
 INTRA_SECRET_KEY = getenv("INTRA_SECRET_KEY")
+REDIRECT_URI = getenv("REDIRECT_URI")
+STATE = getenv("STATE")
 
 
 """
