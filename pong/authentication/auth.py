@@ -58,7 +58,6 @@ OTP 주의사항
 
 class OAuthView(View):
 
-
     # TODO: code를 access_token으로 바꾼 후 get_user_info 사용 및 cache저장
     def get(self, request):
         """
@@ -86,8 +85,7 @@ class OAuthView(View):
             token = response_data.get("access_token")
             # expires_in = response_data.get("expires_in")
             if not token:
-                error_message = {"error": "No access token in response"}
-                return JsonResponse(error_message, status=400)
+                return JsonResponse({"error": "No access token in response"}, status=400)
             encoded_jwt = jwt.encode({"access_token": token}, JWT_SECRET, algorithm="HS256")
             return JsonResponse({"jwt": encoded_jwt}, status=200)
 
