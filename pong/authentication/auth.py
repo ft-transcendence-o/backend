@@ -83,6 +83,7 @@ class OAuthView(View):
                 return JsonResponse(response_data, status=response.status_code)
 
             token = response_data.get("access_token")
+            # TODO: async(get_user_info), return Response
             # expires_in = response_data.get("expires_in")
             if not token:
                 return JsonResponse({"error": "No access token in response"}, status=400)
@@ -92,6 +93,51 @@ class OAuthView(View):
         except requests.RequestException as e:
             error_message = {"error": str(e)}
             return JsonResponse(error_message, status=500)
+
+    def get_user_info(self, access_token):
+        """
+        access_token을 활용하여 user의 정보를 받아온다.
+        정보를 받아와서 db에 있는지 확인한 후 없을 경우 생성
+        """
+        headers = { "Authorization": "Bearer %s" % decoded_jwt.get("access_token") }
+        response = requests.get(f'{API_ULR}/v2/me', headers=headers)
+        if response.status_code == 200:
+            data = response.json()
+            #TODO: Transaction and asynchronous, module function
+            user, _ = User.objects.get_or_create(
+                id = data['id'],
+                defaults = {
+                    'email': data['email'],
+                    'login': data['login'],
+                    'usual_full_name': data['usual_full_name'],
+                    'image_link': data['image']['link'],
+                }
+            )
+
+            otp_secret, _ = OTPSecret.objects.get_or_create(
+                user=user,
+                defaults={
+                    'secret': pyotp.random_base32(),
+                    'attempts': 0,
+                    'last_attempt': datetime(1970, 1, 1, tzinfo=timezone.utc),
+                    'is_locked': False,
+                }
+            )
+
+            user_data = {
+                'id': user.id,
+                'email': user.email,
+                'login': user.login,
+                'usual_full_name': user.usual_full_name,
+                'image_link': user.image_link,
+                'secret': otp_secret.secret,
+                'attempts': otp_secret.attempts,
+                'last_attempt': otp_secret.last_attempt,
+                'is_locked': otp_secret.is_locked,
+            }
+            cache.set(f'user_data_{access_token}', user_data, TOKEN_EXIRES)
+            return True, "input data success"
+        return False, response.json()
 
 
 
