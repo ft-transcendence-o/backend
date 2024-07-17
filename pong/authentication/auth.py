@@ -1,4 +1,5 @@
 from django.http import HttpResponse, JsonResponse, HttpResponseRedirect
+from django.core.exceptions import ValidationError
 from django.core.cache import cache
 from django.views import View
 from urllib.parse import urlencode
@@ -142,11 +143,37 @@ class OAuthView(View):
         return False, response.json()
 
 
-class OTPView(View):
+class QRcodeView(View):
 
     @token_required
-    def post(request):
-        pass
+    def get(self, request, *args, **kwargs):
+        access_token = kwargs.get('access_token')
+        try:
+            user_data = self.get_user_data(access_token)
+            secret = self.get_user_secret(user_data)
+            uri = self.generate_otp_uri(user_data, secret)
+            return JsonResponse({"otpauth_uri": uri}, status=200)
+        except ValidationError as e:
+            return JsonResponse({"error": str(e)}, status=400)
+ 
+    # It check user data twice but still need
+    def get_user_data(self, access_token):
+        user_data = cache.get(f'user_data_{access_token}')
+        if not user_data:
+            raise ValidationError("User data not found")
+        return user_data
+
+    def get_user_secret(self, user_data):
+        secret = user_data.get('secret')
+        if not secret:
+            raise ValidationError("User secret not found")
+        return secret
+
+    def generate_otp_uri(self, user_data, secret):
+        return pyotp.totp.TOTP(secret).provisioning_uri(
+            name=user_data.email,
+            issuer_name="pong_game"
+        )
 
 
 def redirect(self):
