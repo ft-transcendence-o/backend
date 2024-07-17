@@ -113,6 +113,7 @@ class OAuthView(View):
         return False, response.json()
 
     def set_cache(self, user_data, otp_data, access_token):
+        # TODO seperate user and otp cache
         cache_value = {
             'id': user_data.id,
             'email': user_data.email,
