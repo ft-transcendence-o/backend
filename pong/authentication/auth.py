@@ -6,7 +6,7 @@ from os import getenv
 import pyotp
 import requests
 import jwt
-from datetime import timezone
+from datetime import timezone, datetime
 
 from authentication.decorators import login_required
 from authentication.models import User, OTPSecret
@@ -99,8 +99,8 @@ class OAuthView(View):
         access_token을 활용하여 user의 정보를 받아온다.
         정보를 받아와서 db에 있는지 확인한 후 없을 경우 생성
         """
-        headers = { "Authorization": "Bearer %s" % decoded_jwt.get("access_token") }
-        response = requests.get(f'{API_ULR}/v2/me', headers=headers)
+        headers = { "Authorization": "Bearer %s" % access_token }
+        response = requests.get(f'{API_URL}/v2/me', headers=headers)
         if response.status_code == 200:
             data = response.json()
             #TODO: Transaction and asynchronous, module function
@@ -171,7 +171,7 @@ def get_user_info(request):
     decoded_jwt = jwt.decode(encoded_jwt, JWT_SECRET, algorithms=["HS256"])
     access_token = decoded_jwt.get("access_token")
     headers = { "Authorization": "Bearer %s" % decoded_jwt.get("access_token") }
-    response = requests.get(f'{API_ULR}/v2/me', headers=headers)
+    response = requests.get(f'{API_URL}/v2/me', headers=headers)
     if response.status_code == 200:
         data = response.json()
         user, _ = User.objects.get_or_create(
