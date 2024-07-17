@@ -8,7 +8,7 @@ import requests
 import jwt
 from datetime import timezone, datetime
 
-from authentication.decorators import login_required
+from authentication.decorators import token_required
 from authentication.models import User, OTPSecret
 
 """
@@ -142,6 +142,12 @@ class OAuthView(View):
         return False, response.json()
 
 
+class OTPView(View):
+
+    @token_required
+    def post(request):
+        pass
+
 
 def redirect(self):
     """
@@ -227,7 +233,7 @@ def validate_otp(request):
     return HttpResponse("good")
     
 
-@login_required
+# @login_required
 def need_login(request):
     return HttpResponse("Can you join")
 
