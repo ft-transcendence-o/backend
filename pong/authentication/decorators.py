@@ -28,6 +28,5 @@ def token_required(func):
         if not is_valid_token:
             return JsonResponse({'error': 'Invalid token'}, status=401)
 
-        kwargs['access_token'] = access_token
-        return func(self, request, *args, **kwargs)
+        return func(self, request, access_token)
     return wrapper

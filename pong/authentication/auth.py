@@ -146,8 +146,7 @@ class OAuthView(View):
 class QRcodeView(View):
 
     @token_required
-    def get(self, request, *args, **kwargs):
-        access_token = kwargs.get('access_token')
+    def get(self, request, access_token):
         try:
             user_data = self.get_user_data(access_token)
             secret = self.get_user_secret(user_data)
