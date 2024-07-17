@@ -130,6 +130,8 @@ class OAuthView(View):
                 'login': user.login,
                 'usual_full_name': user.usual_full_name,
                 'image_link': user.image_link,
+                'need_otp': user.need_otp,
+                'print_secret': user.print_secret,
                 'secret': otp_secret.secret,
                 'attempts': otp_secret.attempts,
                 'last_attempt': otp_secret.last_attempt,
