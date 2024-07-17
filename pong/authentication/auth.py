@@ -105,42 +105,52 @@ class OAuthView(View):
         if response.status_code == 200:
             data = response.json()
             #TODO: Transaction and asynchronous, module function
-            user, _ = User.objects.get_or_create(
-                id = data['id'],
-                defaults = {
-                    'email': data['email'],
-                    'login': data['login'],
-                    'usual_full_name': data['usual_full_name'],
-                    'image_link': data['image_link'],
-                }
-            )
-
-            otp_secret, _ = OTPSecret.objects.get_or_create(
-                user=user,
-                defaults={
-                    'secret': pyotp.random_base32(),
-                    'attempts': 0,
-                    'last_attempt': datetime(1970, 1, 1, tzinfo=timezone.utc),
-                    'is_locked': False,
-                }
-            )
-
-            user_data = {
-                'id': user.id,
-                'email': user.email,
-                'login': user.login,
-                'usual_full_name': user.usual_full_name,
-                'image_link': user.image_link,
-                'need_otp': user.need_otp,
-                'print_secret': user.print_secret,
-                'secret': otp_secret.secret,
-                'attempts': otp_secret.attempts,
-                'last_attempt': otp_secret.last_attempt,
-                'is_locked': otp_secret.is_locked,
-            }
-            cache.set(f'user_data_{access_token}', user_data, TOKEN_EXIRES)
+            with transaction.atomic():
+                user_data = self.get_or_create_user(data)
+                otp_data = self.get_or_create_otp_secret(data['id'])
+            set_cache(user_data, otp_data, access_token)
             return True, "input data success"
         return False, response.json()
+
+    def set_cache(self, user_data, otp_data, access_token):
+        cache_value = {
+            'id': user_data.id,
+            'email': user_data.email,
+            'login': user_data.login,
+            'usual_full_name': user_data.usual_full_name,
+            'image_link': user_data.image_link,
+            'need_otp': user_data.need_otp,
+            'print_secret': user_data.print_secret,
+            'secret': otp_data.secret,
+            'attempts': otp_data.attempts,
+            'last_attempt': otp_data.last_attempt,
+            'is_locked': otp_data.is_locked,
+        }
+        cache.set(f'user_data_{access_token}', cache_value, TOKEN_EXIRES)
+
+    def get_or_create_user(self, data):
+        user, _ = User.objects.get_or_create(
+            id=data['id'],
+            defaults={
+                'email': data['email'],
+                'login': data['login'],
+                'usual_full_name': data['usual_full_name'],
+                'image_link': data['image_link'],
+            }
+        )
+        return user
+
+    def get_or_create_otp_secret(self, user_id):
+        otp_secret, _ = OTPSecret.objects.get_or_create(
+            user_id=user_id,
+            defaults={
+                'secret': pyotp.random_base32(),
+                'attempts': 0,
+                'last_attempt': None,
+                'is_locked': False,
+            }
+        )
+        return otp_secret
 
 
 class QRcodeView(View):
