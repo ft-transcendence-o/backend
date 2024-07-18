@@ -190,6 +190,75 @@ class QRcodeView(View):
         )
 
 
+class OTPView(View):
+
+    @token_required
+    def post(self, request, access_token):
+        """
+        OTP 패스워드를 확인하는 view
+        OTP 정보 확인 및 900초 지났을 경우 시도 횟수 초기화
+        계정 잠금, 정보 없음(?), OTP인증 실패 확인
+        """
+        user_data = cache.get(f"user_data_{access_token}")
+        user_id = user_data['id']
+        otp_data = get_otp_data(user_id)
+        if not otp_data:
+            return False, "OTP 설정을 찾을 수 없습니다."
+
+        if otp_data['is_locked']:
+            return False, "계정이 잠겼습니다. 나중에 다시 시도해주세요."
+
+        now = timezone.now()
+        if otp_data['last_attempt'] and (now - otp_data['last_attempt']).total_seconds() > CACHE_TIMEOUT:
+            otp_data['attempts'] = 0
+
+        otp_data['attempts'] += 1
+        otp_data['last_attempt'] = now
+
+        if otp_data['attempts'] >= MAX_ATTEMPTS:
+            otp_data['is_locked'] = True
+            update_otp_data(user_id, otp_data)
+            return False, "최대 시도 횟수를 초과했습니다. 15분 후에 다시 시도하세요."
+
+        otp_code = request.POST.get('input_password')
+        if pyotp.TOTP(otp_data['secret']).verify(otp_code):
+            otp_data['attempts'] = 0
+            otp_data['is_locked'] = False
+            update_otp_data(user_id, otp_data)
+            return True, "OTP 인증 성공"
+
+        update_otp_data(user_id, otp_data)
+        return False, f"잘못된 OTP 코드입니다. 남은 시도 횟수: {MAX_ATTEMPTS - otp_data['attempts']}"
+
+    def get_otp_data(self, user_id):
+        """
+        DB에서 otp data를 받아옴
+        TODO: otp_data를 cache하는 것이 이득인가?
+        """
+        try:
+            otp_secret = OTPSecret.objects.get(user_id=user_id)
+            data = {
+                'secret': otp_secret.secret,
+                'attempts': otp_secret.attempts,
+                'last_attempt': otp_secret.last_attempt,
+                'is_locked': otp_secret.is_locked
+            }
+        except OTPSecret.DoesNotExist:
+            return None
+        return data
+
+    def update_otp_data(self, user_id, data):
+        """
+        OTP 시도 횟수 및 시간 저장
+        5회 이상 시도 시 계정 잠금 및 초기화 시간 900초 소요
+        """
+        OTPSecret.objects.filter(user_id=user_id).update(
+            attempts=data['attempts'],
+            last_attempt=data['last_attempt'],
+            is_locked=data['is_locked']
+        )
+
+
 def redirect(self):
     """
     42intra로 redirect해서 로그인 할 경우 정보를 반환
