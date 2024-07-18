@@ -210,10 +210,10 @@ class OTPView(View):
         user_id = user_data['id']
         otp_data = self.get_otp_data(user_id)
         if not otp_data:
-            return False, "OTP 설정을 찾을 수 없습니다."
+            return JsonResponse({"error": "OTP 설정을 찾을 수 없습니다."}, status=500)
 
         if otp_data['is_locked']:
-            return False, "계정이 잠겼습니다. 나중에 다시 시도해주세요."
+            return JsonResponse({"error": "계정이 잠겼습니다. 나중에 다시 시도해주세요."}, status=401)
 
         now = timezone.now()
         if otp_data['last_attempt'] and (now - otp_data['last_attempt']).total_seconds() > CACHE_TIMEOUT:
@@ -225,7 +225,7 @@ class OTPView(View):
         if otp_data['attempts'] >= MAX_ATTEMPTS:
             otp_data['is_locked'] = True
             self.update_otp_data(user_id, otp_data)
-            return False, "최대 시도 횟수를 초과했습니다. 15분 후에 다시 시도하세요."
+            return JsonResponse({"error": "최대 시도 횟수를 초과했습니다. 15분 후에 다시 시도하세요."}, status=401)
 
         otp_code = request.POST.get('input_password')
         if pyotp.TOTP(otp_data['secret']).verify(otp_code):
@@ -236,7 +236,7 @@ class OTPView(View):
             return True, "OTP 인증 성공"
 
         self.update_otp_data(user_id, otp_data)
-        return False, f"잘못된 OTP 코드입니다. 남은 시도 횟수: {MAX_ATTEMPTS - otp_data['attempts']}"
+        return JsonResponse({"error": f"잘못된 OTP 코드입니다. 남은 시도 횟수: {MAX_ATTEMPTS - otp_data['attempts']}"}, status=401)
 
     def get_otp_data(self, user_id):
         """
