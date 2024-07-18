@@ -101,7 +101,7 @@ class OAuthView(View):
         access_token을 활용하여 user의 정보를 받아온다.
         정보를 받아와서 db에 있는지 확인한 후 없을 경우 생성
         """
-        headers = { "Authorization": "Bearer %s" % access_token }
+        headers = { "Authorization": f'Bearer {access_token}' }
         response = requests.get(f'{API_URL}/v2/me', headers=headers)
         if response.status_code == 200:
             data = response.json()
