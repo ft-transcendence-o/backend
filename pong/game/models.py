@@ -1,12 +1,14 @@
 from django.db import models
+from authentication.models import User
 
 GAME_MODES = [
     ('1VS1', '1vs1'),
     ('TOURNAMENT', 'Tournament')
 ]
-# Create your models here.
-class Game(models.Model):
 
+class Game(models.Model):
+    id = models.IntegerField(primary_key=True)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=False)
     player1 = models.CharField(max_length=10)
     player2 = models.CharField(max_length=10)
     score = models.CharField(max_length=10)
@@ -16,6 +18,8 @@ class Game(models.Model):
 
 
 class Tournament(models.Model):
+    id = models.IntegerField(primary_key=True)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=False)
     game1 = models.ForeignKey('Game', related_name='tournament_game1', on_delete=models.SET_NULL, null=True)
     game2 = models.ForeignKey('Game', related_name='tournament_game2', on_delete=models.SET_NULL, null=True)
     game3 = models.ForeignKey('Game', related_name='tournament_game3', on_delete=models.SET_NULL, null=True)
