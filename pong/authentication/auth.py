@@ -217,17 +217,17 @@ class OTPView(View):
 
         if otp_data['attempts'] >= MAX_ATTEMPTS:
             otp_data['is_locked'] = True
-            update_otp_data(user_id, otp_data)
+            self.update_otp_data(user_id, otp_data)
             return False, "최대 시도 횟수를 초과했습니다. 15분 후에 다시 시도하세요."
 
         otp_code = request.POST.get('input_password')
         if pyotp.TOTP(otp_data['secret']).verify(otp_code):
             otp_data['attempts'] = 0
             otp_data['is_locked'] = False
-            update_otp_data(user_id, otp_data)
+            self.update_otp_data(user_id, otp_data)
             return True, "OTP 인증 성공"
 
-        update_otp_data(user_id, otp_data)
+        self.update_otp_data(user_id, otp_data)
         return False, f"잘못된 OTP 코드입니다. 남은 시도 횟수: {MAX_ATTEMPTS - otp_data['attempts']}"
 
     def get_otp_data(self, user_id):
