@@ -60,7 +60,7 @@ OTP 주의사항
 
 class OAuthView(View):
 
-    # TODO: code를 access_token으로 바꾼 후 get_user_info 사용 및 cache저장
+
     def get(self, request):
         """
         frontend에서 /oauth/authorize 경로로 보낸 후 redirection되어서 오는 곳.
@@ -84,12 +84,21 @@ class OAuthView(View):
             if response.status_code != 200:
                 return JsonResponse(response_data, status=response.status_code)
 
-            token = response_data.get("access_token")
-            # TODO: async(get_user_info), return Response
-            # expires_in = response_data.get("expires_in")
-            if not token:
+            access_token = response_data.get("access_token")
+            if not access_token:
                 return JsonResponse({"error": "No access token in response"}, status=400)
-            encoded_jwt = jwt.encode({"access_token": token}, JWT_SECRET, algorithm="HS256")
+
+            # TODO: async(get_user_info), return Response
+            success, response = self.get_user_info(access_token)
+            if success == False:
+                return JsonResponse({"error": response}, status=500)
+            encoded_jwt = jwt.encode(
+                {
+                    "access_token": access_token,
+                    "passed_2fa": response['passed_2fa'],
+                    "is_verified": response['is_verified'],
+                },
+                JWT_SECRET, algorithm="HS256")
             return JsonResponse({"jwt": encoded_jwt}, status=200)
 
         except requests.RequestException as e:
@@ -114,7 +123,7 @@ class OAuthView(View):
                 return False, {"error": str(e)}
 
             self.set_cache(user_data, otp_data, access_token)
-            return True, ""
+            return True, cache.get(f'user_data_{access_token}')
         return False, response.json()
 
     def set_cache(self, user_data, otp_data, access_token):
@@ -125,11 +134,9 @@ class OAuthView(View):
             'usual_full_name': user_data.usual_full_name,
             'image_link': user_data.image_link,
             'need_otp': user_data.need_otp,
-            'print_secret': user_data.print_secret,
             'secret': otp_data.secret,
-            'attempts': otp_data.attempts,
-            'last_attempt': otp_data.last_attempt,
-            'is_locked': otp_data.is_locked,
+            'is_verified': otp_data.is_verified,
+            'passed_2fa': False,
         }
         cache.set(f'user_data_{access_token}', cache_value, TOKEN_EXIRES)
 
@@ -224,6 +231,7 @@ class OTPView(View):
         if pyotp.TOTP(otp_data['secret']).verify(otp_code):
             otp_data['attempts'] = 0
             otp_data['is_locked'] = False
+            user_data['passed_2fa'] = True
             self.update_otp_data(user_id, otp_data)
             return True, "OTP 인증 성공"
 
@@ -233,7 +241,6 @@ class OTPView(View):
     def get_otp_data(self, user_id):
         """
         DB에서 otp data를 받아옴
-        TODO: otp_data를 cache하는 것이 이득인가?
         """
         try:
             otp_secret = OTPSecret.objects.get(user_id=user_id)
