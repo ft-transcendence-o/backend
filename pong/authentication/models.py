@@ -17,3 +17,4 @@ class OTPSecret(models.Model):
     attempts = models.IntegerField(default=0)
     last_attempt = models.DateTimeField(null=True)
     is_locked = models.BooleanField(default=False)
+    is_verified = models.BooleanField(default=False)
