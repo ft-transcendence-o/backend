@@ -2,6 +2,7 @@ from django.http import HttpResponse, JsonResponse, HttpResponseRedirect
 from django.core.exceptions import ValidationError
 from django.core.cache import cache
 from django.views import View
+from django.db import transaction
 from urllib.parse import urlencode
 from os import getenv
 import pyotp
@@ -104,12 +105,16 @@ class OAuthView(View):
         response = requests.get(f'{API_URL}/v2/me', headers=headers)
         if response.status_code == 200:
             data = response.json()
-            #TODO: Transaction and asynchronous, module function
-            with transaction.atomic():
-                user_data = self.get_or_create_user(data)
-                otp_data = self.get_or_create_otp_secret(data['id'])
-            set_cache(user_data, otp_data, access_token)
-            return True, "input data success"
+            #TODO: asynchronous if can
+            try:
+                with transaction.atomic():
+                    user_data = self.get_or_create_user(data)
+                    otp_data = self.get_or_create_otp_secret(data['id'])
+            except transaction.TransactionManagementError as e:
+                return False, {"error": str(e)}
+
+            self.set_cache(user_data, otp_data, access_token)
+            return True, ""
         return False, response.json()
 
     def set_cache(self, user_data, otp_data, access_token):
