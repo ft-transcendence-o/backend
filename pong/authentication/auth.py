@@ -201,7 +201,7 @@ class OTPView(View):
         """
         user_data = cache.get(f"user_data_{access_token}")
         user_id = user_data['id']
-        otp_data = get_otp_data(user_id)
+        otp_data = self.get_otp_data(user_id)
         if not otp_data:
             return False, "OTP 설정을 찾을 수 없습니다."
 
