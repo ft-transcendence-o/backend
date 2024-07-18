@@ -2,6 +2,7 @@ from django.http import HttpResponse, JsonResponse, HttpResponseRedirect
 from django.core.exceptions import ValidationError
 from django.core.cache import cache
 from django.views import View
+from django.db import transaction
 from urllib.parse import urlencode
 from os import getenv
 import pyotp
@@ -59,7 +60,7 @@ OTP 주의사항
 
 class OAuthView(View):
 
-    # TODO: code를 access_token으로 바꾼 후 get_user_info 사용 및 cache저장
+
     def get(self, request):
         """
         frontend에서 /oauth/authorize 경로로 보낸 후 redirection되어서 오는 곳.
@@ -83,12 +84,21 @@ class OAuthView(View):
             if response.status_code != 200:
                 return JsonResponse(response_data, status=response.status_code)
 
-            token = response_data.get("access_token")
-            # TODO: async(get_user_info), return Response
-            # expires_in = response_data.get("expires_in")
-            if not token:
+            access_token = response_data.get("access_token")
+            if not access_token:
                 return JsonResponse({"error": "No access token in response"}, status=400)
-            encoded_jwt = jwt.encode({"access_token": token}, JWT_SECRET, algorithm="HS256")
+
+            # TODO: async(get_user_info), return Response
+            success, response = self.get_user_info(access_token)
+            if success == False:
+                return JsonResponse({"error": response}, status=500)
+            encoded_jwt = jwt.encode(
+                {
+                    "access_token": access_token,
+                    "passed_2fa": response['passed_2fa'],
+                    "is_verified": response['is_verified'],
+                },
+                JWT_SECRET, algorithm="HS256")
             return JsonResponse({"jwt": encoded_jwt}, status=200)
 
         except requests.RequestException as e:
@@ -100,16 +110,20 @@ class OAuthView(View):
         access_token을 활용하여 user의 정보를 받아온다.
         정보를 받아와서 db에 있는지 확인한 후 없을 경우 생성
         """
-        headers = { "Authorization": "Bearer %s" % access_token }
+        headers = { "Authorization": f'Bearer {access_token}' }
         response = requests.get(f'{API_URL}/v2/me', headers=headers)
         if response.status_code == 200:
             data = response.json()
-            #TODO: Transaction and asynchronous, module function
-            with transaction.atomic():
-                user_data = self.get_or_create_user(data)
-                otp_data = self.get_or_create_otp_secret(data['id'])
-            set_cache(user_data, otp_data, access_token)
-            return True, "input data success"
+            #TODO: asynchronous if can
+            try:
+                with transaction.atomic():
+                    user_data = self.get_or_create_user(data)
+                    otp_data = self.get_or_create_otp_secret(data['id'])
+            except transaction.TransactionManagementError as e:
+                return False, {"error": str(e)}
+
+            self.set_cache(user_data, otp_data, access_token)
+            return True, cache.get(f'user_data_{access_token}')
         return False, response.json()
 
     def set_cache(self, user_data, otp_data, access_token):
@@ -121,11 +135,9 @@ class OAuthView(View):
             'usual_full_name': user_data.usual_full_name,
             'image_link': user_data.image_link,
             'need_otp': user_data.need_otp,
-            'print_secret': user_data.print_secret,
             'secret': otp_data.secret,
-            'attempts': otp_data.attempts,
-            'last_attempt': otp_data.last_attempt,
-            'is_locked': otp_data.is_locked,
+            'is_verified': otp_data.is_verified,
+            'passed_2fa': False,
         }
         cache.set(f'user_data_{access_token}', cache_value, TOKEN_EXIRES)
 
@@ -186,154 +198,51 @@ class QRcodeView(View):
         )
 
 
-def redirect(self):
-    """
-    42intra로 redirect해서 로그인 할 경우 정보를 반환
-    frontend에서 받은 정보를 backend에 전달해야 하는 로직
-    """
-    params = {
-        "client_id": INTRA_UID,
-        "redirect_uri": REDIRECT_URI,
-        "response_type": "code",
-        "scope": "public",
-        "state": STATE,
-    }
-    base_url = API_URL + "/oauth/authorize"
-    encoded_params = urlencode(params)
-    URI = f"{base_url}?{encoded_params}"
-    response = requests.get(URI)
-    print(response.text)
-    return HttpResponseRedirect(URI)
+class OTPView(View):
 
+    @token_required
+    def post(self, request, access_token):
+        """
+        OTP 패스워드를 확인하는 view
+        OTP 정보 확인 및 900초 지났을 경우 시도 횟수 초기화
+        계정 잠금, 정보 없음(?), OTP인증 실패 확인
+        """
+        user_data = cache.get(f"user_data_{access_token}")
+        user_id = user_data['id']
+        otp_data = self.get_otp_data(user_id)
+        if not otp_data:
+            return JsonResponse({"error": "OTP 설정을 찾을 수 없습니다."}, status=500)
 
-def get_user_info(request):
-    """
-    access_token을 활용하여 user의 정보를 받아온다.
-    정보를 받아와서 db에 있는지 확인한 후 없을 경우 생성
-    OTP Secret값 생성도 필요
-    """
-    encoded_jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3NfdG9rZW4iOiIzNTYyNDUxMjVhNjQ4YzY0YTg0YmY3MjI1MDhjY2VkNWEzOTQ1Njg1YzQ4MzEzZWNhNDFhYTdkYjI4N2U2YTVhIn0.T6D3v7fq-0PK-G1y2tc_I0hqav1YJpbHidbXCXBxqfk"
-    decoded_jwt = jwt.decode(encoded_jwt, JWT_SECRET, algorithms=["HS256"])
-    access_token = decoded_jwt.get("access_token")
-    headers = { "Authorization": "Bearer %s" % decoded_jwt.get("access_token") }
-    response = requests.get(f'{API_URL}/v2/me', headers=headers)
-    if response.status_code == 200:
-        data = response.json()
-        user, _ = User.objects.get_or_create(
-            id = data['id'],
-            defaults = {
-                'email': data['email'],
-                'login': data['login'],
-                'usual_full_name': data['usual_full_name'],
-                'image_link': data['image']['link'],
-            }
-        )
-        user_data = {
-            'id': user.id,
-            'email': user.email,
-            'login': user.login,
-            'usual_full_name': user.usual_full_name,
-            'image_link': user.image_link,
-        }
-        cache.set(f'user_data_{access_token}', user_data, TOKEN_EXIRES)
-        return HttpResponse(response.text)
-    return JsonResponse(response.json(), status=response.status_code)
+        if otp_data['is_locked']:
+            return JsonResponse({"error": "계정이 잠겼습니다. 나중에 다시 시도해주세요."}, status=401)
 
-# @login_required
-def otp_test(request):
-    """
-    otp URI를 만들고 이를 QRcode로 변환하여 사용
-    secret key 값을 user db에 저장한 뒤 꺼내어서 사용
-    :request secret: pyotp secret of user info
-    """
-    # TODO: need to store secret value in user db
-    secret = pyotp.random_base32()
-    URI = pyotp.totp.TOTP(secret).provisioning_uri(
-        # TODO: user email로 입력
-        name="user@mail.com", issuer_name="pong_game"
-    )
-    return JsonResponse({"otpauth_uri": URI}, status=200)
+        now = timezone.now()
+        if otp_data['last_attempt'] and (now - otp_data['last_attempt']).total_seconds() > CACHE_TIMEOUT:
+            otp_data['attempts'] = 0
 
+        otp_data['attempts'] += 1
+        otp_data['last_attempt'] = now
 
-# @login_required
-def validate_otp(request):
-    """
-    user의 secret값을 사용해서 otp 값이 타당한지 확인
-    secret을 db에서 매번 확인하는 것, caching 하는 것 선택
-    """
-    # TODO: db? caching?
-    secret = "temp"
-    input_pass = request.POST.get("otp")
-    expected_pass = pyotp.TOTP(secret).now() # type str
-    if input_pass != expected_pass:
-        return HttpResponse("bad")
-    return HttpResponse("good")
-    
+        if otp_data['attempts'] >= MAX_ATTEMPTS:
+            otp_data['is_locked'] = True
+            self.update_otp_data(user_id, otp_data)
+            return JsonResponse({"error": "최대 시도 횟수를 초과했습니다. 15분 후에 다시 시도하세요."}, status=401)
 
-# @login_required
-def need_login(request):
-    return HttpResponse("Can you join")
+        otp_code = request.POST.get('input_password')
+        if pyotp.TOTP(otp_data['secret']).verify(otp_code):
+            otp_data['attempts'] = 0
+            otp_data['is_locked'] = False
+            user_data['passed_2fa'] = True
+            self.update_otp_data(user_id, otp_data)
+            return True, "OTP 인증 성공"
 
+        self.update_otp_data(user_id, otp_data)
+        return JsonResponse({"error": f"잘못된 OTP 코드입니다. 남은 시도 횟수: {MAX_ATTEMPTS - otp_data['attempts']}"}, status=401)
 
-
-
-def get_token_info(request):
-    """
-    access_token을 발급 받고 테스트
-    expired 및 status_code를 사용해 유효한지 확인
-    :request jwt: acces_token이 담긴 jwt
-    """
-    URI = API_URL + "/auth/token/info"
-    encoded_jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3NfdG9rZW4iOiI0MjQyYjk1YWY4MzBiNzI1MjllZmJkZTA2MDI5OTAxYWEyZTA4YmY3ZDRlYmMzMzIwYjI1ZmIzNGUyMjllZWFhIn0.eIivOHCPQVxtIouADQss3re6yrlSlWtCycGCUKss4QE"
-    decoded_jwt = jwt.decode(encoded_jwt, JWT_SECRET, algorithms=["HS256"])
-    token = decoded_jwt.get("access_token")
-    headers = { "Authorization": "Bearer %s" % token }
-    response = requests.get(f'{API_URL}/auth/token/info', headers=headers)
-    return HttpResponse(response.text)
-
-
-def temp_access_token(request):
-    """
-    테스트용 exchange_access_token
-    grant_type이 client_credentials으로
-    제한된 사용이 가능한 access_token 발급
-    """
-
-    data = {
-        "grant_type": "client_credentials",
-        "client_id": INTRA_UID,
-        "client_secret": INTRA_SECRET_KEY,
-    }
-    try:
-        response = requests.post(f'{API_URL}/oauth/token', data=data)
-        response_data = response.json()
-        if response.status_code != 200:
-            return JsonResponse(response_data, status=response.status_code)
-        
-        token = response_data.get("access_token")
-        expires_in = response_data.get("expires_in")
-        if not token or not expires_in:
-            error_message = {"error": "No access_token or expires_in in response"}
-            return JsonResponse(error_message, status=400)
-        JWT_SECRET = getenv("JWT_SECRET")
-        encoded_jwt = jwt.encode({"access_token": token}, JWT_SECRET, algorithm="HS256")
-        return JsonResponse({"jwt": encoded_jwt}, status=200)
-
-    except requests.RequestException as e:
-        error_message = {"error": str(e)}
-        return JsonResponse(error_message, status=500)
-
-
-
-def get_otp_data(user_id):
-    """
-    otp data를 받아옴
-    cache 확인 후 DB 확인
-    없을 경우 OTP 정보 입력 필요
-    """
-    cache_key = f"otp_data_{user_id}"
-    data = cache.get(cache_key)
-    if data is None:
+    def get_otp_data(self, user_id):
+        """
+        DB에서 otp data를 받아옴
+        """
         try:
             otp_secret = OTPSecret.objects.get(user_id=user_id)
             data = {
@@ -342,56 +251,17 @@ def get_otp_data(user_id):
                 'last_attempt': otp_secret.last_attempt,
                 'is_locked': otp_secret.is_locked
             }
-            cache.set(cache_key, data, CACHE_TIMEOUT)
         except OTPSecret.DoesNotExist:
             return None
-    return data
+        return data
 
-def update_otp_data(user_id, data):
-    """
-    OTP 시도 횟수 및 시간 저장
-    5회 이상 시도 시 계정 잠금 및 초기화 시간 900초 소요
-    """
-    cache_key = f"otp_data_{user_id}"
-    cache.set(cache_key, data, CACHE_TIMEOUT)
-
-    if data['attempts'] % 5 == 0 or data['is_locked']:
+    def update_otp_data(self, user_id, data):
+        """
+        OTP 시도 횟수 및 시간 저장
+        5회 이상 시도 시 계정 잠금 및 초기화 시간 900초 소요
+        """
         OTPSecret.objects.filter(user_id=user_id).update(
             attempts=data['attempts'],
             last_attempt=data['last_attempt'],
             is_locked=data['is_locked']
         )
-
-def verify_otp(user_id, otp_code):
-    """
-    OTP 시도 할 경우 함수
-    OTP 정보 확인 및 900초 지났을 경우 시도 횟수 초기화
-    계정 잠금, 정보 없음(?), OTP인증 실패 확인
-    """
-    otp_data = get_otp_data(user_id)
-    if not otp_data:
-        return False, "OTP 설정을 찾을 수 없습니다."
-
-    if otp_data['is_locked']:
-        return False, "계정이 잠겼습니다. 관리자에게 문의하세요."
-
-    now = timezone.now()
-    if otp_data['last_attempt'] and (now - otp_data['last_attempt']).total_seconds() > CACHE_TIMEOUT:
-        otp_data['attempts'] = 0
-
-    otp_data['attempts'] += 1
-    otp_data['last_attempt'] = now
-
-    if otp_data['attempts'] >= MAX_ATTEMPTS:
-        otp_data['is_locked'] = True
-        update_otp_data(user_id, otp_data)
-        return False, "최대 시도 횟수를 초과했습니다. 15분 후에 다시 시도하세요."
-
-    if pyotp.TOTP(otp_data['secret']).verify(otp_code):
-        otp_data['attempts'] = 0
-        otp_data['is_locked'] = False
-        update_otp_data(user_id, otp_data)
-        return True, "OTP 인증 성공"
-
-    update_otp_data(user_id, otp_data)
-    return False, f"잘못된 OTP 코드입니다. 남은 시도 횟수: {MAX_ATTEMPTS - otp_data['attempts']}"
