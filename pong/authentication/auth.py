@@ -8,6 +8,7 @@ from os import getenv
 import pyotp
 import requests
 import jwt
+import json
 from datetime import timezone, datetime
 
 from authentication.decorators import token_required
@@ -67,7 +68,8 @@ class OAuthView(View):
         querystring으로 code를 가져온 후 code를 access_token으로 교환
         access_token을 cache에 저장해서 expires_in을 체크한다.
         """
-        code = request.POST.get('code')
+        body = json.loads(request.body.decode('utf-8'))
+        code = body.get("code")
         if not code:
             return JsonResponse({"error": "No code value in querystring"}, status=400)
         data = {
