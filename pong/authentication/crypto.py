@@ -4,7 +4,8 @@ from cryptography.hazmat.backends import default_backend
 from base64 import urlsafe_b64encode, urlsafe_b64decode
 
 class AESCipher:
-    key = getenv("HASH_SALT")
+    HASH_SALT = getenv("HASH_SALT")
+    key = str.encode(HASH_SALT)
 
     @staticmethod
     def encrypt(plaintext):
