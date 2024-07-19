@@ -1,15 +1,14 @@
 from django.http import HttpResponse, JsonResponse, HttpResponseRedirect
 from django.core.exceptions import ValidationError
 from django.core.cache import cache
+from django.utils import timezone
 from django.views import View
 from django.db import transaction
-from urllib.parse import urlencode
 from os import getenv
 import pyotp
 import requests
 import jwt
 import json
-from datetime import timezone, datetime
 
 from authentication.decorators import token_required
 from authentication.models import User, OTPSecret
@@ -94,14 +93,13 @@ class OAuthView(View):
             success, response = self.get_user_info(access_token)
             if success == False:
                 return JsonResponse({"error": response}, status=500)
-            encoded_jwt = jwt.encode(
+            encoded_jwt = jwt.encode({"access_token": access_token}, JWT_SECRET, algorithm="HS256")
+            return JsonResponse(
                 {
-                    "access_token": access_token,
-                    "passed_2fa": response['passed_2fa'],
-                    "is_verified": response['is_verified'],
-                },
-                JWT_SECRET, algorithm="HS256")
-            return JsonResponse({"jwt": encoded_jwt}, status=200)
+                    "jwt": encoded_jwt,
+                    "passed_2fa": response["passed_2fa"],
+                    "is_verified": response["is_verified"]
+                }, status=200)
 
         except requests.RequestException as e:
             error_message = {"error": str(e)}
