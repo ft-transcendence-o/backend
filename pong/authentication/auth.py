@@ -236,7 +236,7 @@ class OTPView(View):
             otp_data['is_locked'] = False
             user_data['passed_2fa'] = True
             self.update_otp_data(user_id, otp_data)
-            return True, "OTP 인증 성공"
+            return JsonResponse({"success": "OTP 인증 성공"}, status=200)
 
         self.update_otp_data(user_id, otp_data)
         return JsonResponse({"error": f"잘못된 OTP 코드입니다. 남은 시도 횟수: {MAX_ATTEMPTS - otp_data['attempts']}"}, status=401)
