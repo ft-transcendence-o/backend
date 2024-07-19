@@ -150,7 +150,7 @@ class OAuthView(View):
                 'email': data['email'],
                 'login': data['login'],
                 'usual_full_name': data['usual_full_name'],
-                'image_link': data['image_link'],
+                'image_link': data['image']['link'],
             }
         )
         return user
