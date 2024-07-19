@@ -61,13 +61,13 @@ OTP 주의사항
 class OAuthView(View):
 
 
-    def get(self, request):
+    def post(self, request):
         """
         frontend에서 /oauth/authorize 경로로 보낸 후 redirection되어서 오는 곳.
         querystring으로 code를 가져온 후 code를 access_token으로 교환
         access_token을 cache에 저장해서 expires_in을 체크한다.
         """
-        code = request.GET.get('code')
+        code = request.POST.get('code')
         if not code:
             return JsonResponse({"error": "No code value in querystring"}, status=400)
         data = {
