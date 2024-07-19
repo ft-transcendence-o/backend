@@ -46,11 +46,11 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'authentication',
     'game',
-	'corsheaders',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
-	'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
