@@ -1,4 +1,5 @@
 from django.db import models
+from . import crypto
 
 # Create your models here.
 class User(models.Model):
@@ -12,8 +13,16 @@ class User(models.Model):
 
 class OTPSecret(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    secret = models.CharField(max_length=50)
+    encrypted_secret = models.CharField(max_length=50)
     attempts = models.IntegerField(default=0)
     last_attempt = models.DateTimeField(null=True)
     is_locked = models.BooleanField(default=False)
     is_verified = models.BooleanField(default=False)
+
+    @property
+    def secret(self):
+        return crypto.AESCipher.decrypt(self.encrypted_secret)
+
+    @secret.setter
+    def secret(self, value):
+        self.encrypted_secret = crypto.AESCipher.encrypt(value)
