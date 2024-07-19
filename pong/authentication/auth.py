@@ -230,7 +230,8 @@ class OTPView(View):
             self.update_otp_data(user_id, otp_data)
             return JsonResponse({"error": "최대 시도 횟수를 초과했습니다. 15분 후에 다시 시도하세요."}, status=401)
 
-        otp_code = request.POST.get('input_password')
+        body = json.loads(request.body.decode('utf-8'))
+        otp_code = body.get("input_password")
         if pyotp.TOTP(otp_data['secret']).verify(otp_code):
             otp_data['attempts'] = 0
             otp_data['is_locked'] = False
