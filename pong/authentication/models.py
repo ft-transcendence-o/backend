@@ -13,7 +13,7 @@ class User(models.Model):
 
 class OTPSecret(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    encrypted_secret = models.CharField(max_length=50)
+    encrypted_secret = models.CharField(max_length=100)
     attempts = models.IntegerField(default=0)
     last_attempt = models.DateTimeField(null=True)
     is_locked = models.BooleanField(default=False)
