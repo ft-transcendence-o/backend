@@ -195,7 +195,7 @@ class QRcodeView(View):
 
     def generate_otp_uri(self, user_data, secret):
         return pyotp.totp.TOTP(secret).provisioning_uri(
-            name=user_data.email,
+            name=user_data['email'],
             issuer_name="pong_game"
         )
 
