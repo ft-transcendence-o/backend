@@ -16,6 +16,8 @@ def token_required(func):
         :param request의 헤더에 JWT를 사용한 access_token을 담아서 보낸다
         """
         encoded_jwt = request.headers.get("Authorization")
+        if not encoded_jwt:
+            return JsonResponse({"error": "no jwt in request"}, status=401)
         if encoded_jwt.startswith("Bearer "):
             encoded_jwt = encoded_jwt[7:]
 
