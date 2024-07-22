@@ -66,7 +66,6 @@ class game:
                     "total_items": total_games,
                 }
             }, safe=False)
-
         elif request.method == 'POST':
             try:
                 data = json.loads(request.body)
@@ -90,6 +89,36 @@ class game:
     @require_http_methods(["GET", "POST"])
     def tournament(self, request, access_token):
         user = cache.get(f'user_data_{access_token}')
+        if request.method == 'POST':
+            try:
+                data = json.loads(request.body)
+                tournament_errors = {}
+                for i in range(1, 4):
+                    game_key = f'game{i}'
+                    if game_key not in data:
+                        tournament_errors[game_key] = f"{game_key} is required."
+                    else:
+                        game_errors = validate_game(data[game_key], 'TOURNAMENT')
+                        if game_errors:
+                            tournament_errors[game_key] = game_errors
+
+                if tournament_errors:
+                    return JsonResponse({"errors": tournament_errors}, status=400)
+
+                tournament = Tournament.objects.create(user_id=user['id'])
+                for i in range(1, 4):
+                    game_key = f'game{i}'
+                    game_data = data[game_key]
+                    game = Game.objects.create(user_id=user['id'], tournament_id=tournament.id, **game_data)
+                    setattr(tournament, game_key, game)
+                tournament.save()
+                return JsonResponse({"status": "Tournament created successfully", "id": tournament.id}, status=201)
+            except json.JSONDecodeError:
+                return JsonResponse({"error": "Invalid JSON"}, status=400)
+            except Exception as e:
+                    logger.error(f'error: {str(e)}')
+                    return JsonResponse({"error": str(e)}, status=400)
+
         # tournament GET은 없지만 최소한으로만 구현
         # if request.method == 'GET':
         #     page_number = request.GET.get('page', 1)
@@ -128,32 +157,3 @@ class game:
         #     }, safe=False)
 
         # elif request.method == 'POST':
-        if request.method == 'POST':
-            try:
-                data = json.loads(request.body)
-                tournament_errors = {}
-                for i in range(1, 4):
-                    game_key = f'game{i}'
-                    if game_key not in data:
-                        tournament_errors[game_key] = f"{game_key} is required."
-                    else:
-                        game_errors = validate_game(data[game_key], 'TOURNAMENT')
-                        if game_errors:
-                            tournament_errors[game_key] = game_errors
-
-                if tournament_errors:
-                    return JsonResponse({"errors": tournament_errors}, status=400)
-
-                tournament = Tournament.objects.create(user_id=user['id'])
-                for i in range(1, 4):
-                    game_key = f'game{i}'
-                    game_data = data[game_key]
-                    game = Game.objects.create(user_id=user['id'], tournament_id=tournament.id, **game_data)
-                    setattr(tournament, game_key, game)
-                tournament.save()
-                return JsonResponse({"status": "Tournament created successfully", "id": tournament.id}, status=201)
-            except json.JSONDecodeError:
-                return JsonResponse({"error": "Invalid JSON"}, status=400)
-            except Exception as e:
-                    logger.error(f'error: {str(e)}')
-                    return JsonResponse({"error": str(e)}, status=400)
