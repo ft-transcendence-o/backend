@@ -17,14 +17,14 @@ def token_required(func):
         """
         encoded_jwt = request.headers.get("Authorization")
         if not encoded_jwt:
-            return JsonResponse({"error": "no jwt in request"}, status=401)
+            return JsonResponse({"error": "No jwt in request"}, status=401)
         if encoded_jwt.startswith("Bearer "):
             encoded_jwt = encoded_jwt[7:]
 
         try:
             decoded_jwt = jwt.decode(encoded_jwt, JWT_SECRET, algorithms=["HS256"])
         except:
-            return JsonResponse({"error": "Invalid jwt"}, status=401)
+            return JsonResponse({"error": "Decoding jwt failed"}, status=401)
 
         access_token = decoded_jwt.get("access_token")
         if not access_token:
