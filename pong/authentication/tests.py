@@ -1,8 +1,6 @@
 from django.test import TestCase, RequestFactory
 from django.http import JsonResponse
-from django.core.cache import cache
 from unittest.mock import patch
-import jwt
 import json
 from authentication.decorators import token_required
 
