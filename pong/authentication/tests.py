@@ -4,10 +4,10 @@ from unittest.mock import patch
 import json
 from authentication.decorators import token_required
 
+# TODO: need to set test env["JWT_SECRET"] for unittest
 class TokenRequiredDecoratorTests(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
-        self.JWT_SECRET = "test_secret"
 
     @token_required
     def dummy_view(self, request, access_token):
