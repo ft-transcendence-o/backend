@@ -1,8 +1,10 @@
 from django.test import TestCase, RequestFactory
 from django.http import JsonResponse
+from django.utils import timezone
 from unittest.mock import patch
 import json
 from authentication.decorators import token_required
+from authentication.models import OTPSecret, User
 
 # TODO: need to set test env["JWT_SECRET"] for unittest
 class TokenRequiredDecoratorTests(TestCase):
@@ -52,3 +54,51 @@ class TokenRequiredDecoratorTests(TestCase):
         response = self.dummy_view(request)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(json.loads(response.content.decode('utf-8')), {"access_token": "test_token"})
+
+
+
+class OTPSecretModelTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create(id='9876543', email='test@test.com')
+        self.otp_secret = OTPSecret.objects.create(user=self.user, secret='testsecret')
+
+    def test_otp_secret_creation(self):
+        self.assertTrue(isinstance(self.otp_secret, OTPSecret))
+        self.assertEqual(self.otp_secret.user, self.user)
+
+    def test_secret_encryption_decryption(self):
+        self.assertNotEqual(self.otp_secret.encrypted_secret, 'testsecret')
+        self.assertEqual(self.otp_secret.secret, 'testsecret')
+
+    def test_default_values(self):
+        self.assertEqual(self.otp_secret.attempts, 0)
+        self.assertIsNone(self.otp_secret.last_attempt)
+        self.assertFalse(self.otp_secret.is_locked)
+        self.assertFalse(self.otp_secret.is_verified)
+
+    def test_update_attempts(self):
+        self.otp_secret.attempts += 1
+        self.otp_secret.last_attempt = timezone.now()
+        self.otp_secret.save()
+
+        updated_otp = OTPSecret.objects.get(id=self.otp_secret.id)
+        self.assertEqual(updated_otp.attempts, 1)
+        self.assertIsNotNone(updated_otp.last_attempt)
+
+    def test_lock_account(self):
+        self.otp_secret.is_locked = True
+        self.otp_secret.save()
+
+        locked_otp = OTPSecret.objects.get(id=self.otp_secret.id)
+        self.assertTrue(locked_otp.is_locked)
+
+    def test_verify_account(self):
+        self.otp_secret.is_verified = True
+        self.otp_secret.save()
+
+        verified_otp = OTPSecret.objects.get(id=self.otp_secret.id)
+        self.assertTrue(verified_otp.is_verified)
+
+    def test_one_to_one_relationship(self):
+        with self.assertRaises(Exception):
+            OTPSecret.objects.create(user=self.user, secret='anothersecret')
