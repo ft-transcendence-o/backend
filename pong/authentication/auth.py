@@ -80,7 +80,7 @@ class OAuthView(View):
         access_token 삭제
         """
         cache.delete(f'user_data_{access_token}')
-        return JsonResponse({"message": "logout success"})
+        return JsonResponse({"message": "logout success"}, status=200)
 
     def post(self, request):
         """
