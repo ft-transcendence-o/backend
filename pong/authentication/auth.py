@@ -232,7 +232,7 @@ class OTPView(View):
         데이터의 정합성을 위해서 db를 확인한다.
         """
         user_data = cache.get(f"user_data_{access_token}")
-        user_id = user_data.get(id)
+        user_id = user_data.get('id')
         otp_data = self.get_otp_data(user_id)
         if not otp_data:
             return JsonResponse({"error": "Can't found OTP data."}, status=500)
