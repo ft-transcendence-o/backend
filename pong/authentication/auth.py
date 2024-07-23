@@ -238,7 +238,7 @@ class OTPView(View):
             return JsonResponse({"error": "Can't found OTP data."}, status=500)
 
         if otp_data['is_locked']:
-            return JsonResponse({"error": "Account is locked. try later"}, status=401)
+            return JsonResponse({"error": "Account is locked. try later"}, status=403)
 
         now = timezone.now()
         if otp_data['last_attempt'] and (now - otp_data['last_attempt']).total_seconds() > CACHE_TIMEOUT:
@@ -250,7 +250,7 @@ class OTPView(View):
         if otp_data['attempts'] >= MAX_ATTEMPTS:
             otp_data['is_locked'] = True
             self.update_otp_data(user_id, otp_data)
-            return JsonResponse({"error": "Maximum number of attempts exceeded. Please try again after 15 minutes."}, status=401)
+            return JsonResponse({"error": "Maximum number of attempts exceeded. Please try again after 15 minutes."}, status=403)
 
         body = json.loads(request.body.decode('utf-8'))
         otp_code = body.get("input_password")
@@ -263,7 +263,7 @@ class OTPView(View):
             return JsonResponse({"success": "OTP authentication verified"}, status=200)
 
         self.update_otp_data(user_id, otp_data)
-        return JsonResponse({"error": f"Incorrect password. Remaining attempts: {MAX_ATTEMPTS - otp_data['attempts']}"}, status=401)
+        return JsonResponse({"error": f"Incorrect password. Remaining attempts: {MAX_ATTEMPTS - otp_data['attempts']}"}, status=400)
 
     def get_otp_data(self, user_id):
         """
