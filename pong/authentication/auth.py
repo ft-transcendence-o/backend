@@ -229,13 +229,13 @@ class OTPView(View):
         계정 잠금, 정보 없음(?), OTP인증 실패 확인
         """
         user_data = cache.get(f"user_data_{access_token}")
-        user_id = user_data['id']
+        user_id = user_data.get(id)
         otp_data = self.get_otp_data(user_id)
-        if not otp_data:
-            return JsonResponse({"error": "OTP 설정을 찾을 수 없습니다."}, status=500)
+        if not otp_data or not user_id:
+            return JsonResponse({"error": "Can't found OTP data."}, status=500)
 
         if otp_data['is_locked']:
-            return JsonResponse({"error": "계정이 잠겼습니다. 나중에 다시 시도해주세요."}, status=401)
+            return JsonResponse({"error": "Account is locked. try later"}, status=401)
 
         now = timezone.now()
         if otp_data['last_attempt'] and (now - otp_data['last_attempt']).total_seconds() > CACHE_TIMEOUT:
@@ -247,7 +247,7 @@ class OTPView(View):
         if otp_data['attempts'] >= MAX_ATTEMPTS:
             otp_data['is_locked'] = True
             self.update_otp_data(user_id, otp_data)
-            return JsonResponse({"error": "최대 시도 횟수를 초과했습니다. 15분 후에 다시 시도하세요."}, status=401)
+            return JsonResponse({"error": "Maximum number of attempts exceeded. Please try again after 15 minutes."}, status=401)
 
         body = json.loads(request.body.decode('utf-8'))
         otp_code = body.get("input_password")
@@ -256,10 +256,10 @@ class OTPView(View):
             otp_data['is_locked'] = False
             user_data['passed_2fa'] = True
             self.update_otp_data(user_id, otp_data)
-            return JsonResponse({"success": "OTP 인증 성공"}, status=200)
+            return JsonResponse({"success": "OTP authentication verified"}, status=200)
 
         self.update_otp_data(user_id, otp_data)
-        return JsonResponse({"error": f"잘못된 OTP 코드입니다. 남은 시도 횟수: {MAX_ATTEMPTS - otp_data['attempts']}"}, status=401)
+        return JsonResponse({"error": f"Incorrect password. Remaining attempts: {MAX_ATTEMPTS - otp_data['attempts']}"}, status=401)
 
     def get_otp_data(self, user_id):
         """
