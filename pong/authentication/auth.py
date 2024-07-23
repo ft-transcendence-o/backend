@@ -255,6 +255,7 @@ class OTPView(View):
             otp_data['attempts'] = 0
             otp_data['is_locked'] = False
             user_data['passed_2fa'] = True
+            cache.set(f'user_data_{access_token}', user_data, timeout=cache.ttl(f'user_data_{access_token}'))
             self.update_otp_data(user_id, otp_data)
             return JsonResponse({"success": "OTP authentication verified"}, status=200)
 
