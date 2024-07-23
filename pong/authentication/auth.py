@@ -1,4 +1,4 @@
-from django.http import HttpResponse, JsonResponse, HttpResponseRedirect
+from django.http import JsonResponse
 from django.core.exceptions import ValidationError
 from django.core.cache import cache
 from django.utils import timezone
@@ -59,7 +59,13 @@ OTP 주의사항
 """
 
 class OAuthView(View):
-
+    @token_required
+    def delete(self, request, access_token):
+        """
+        access_token 삭제
+        """
+        cache.delete(f'user_data_{access_token}')
+        return JsonResponse({"message": "logout success"})
 
     def post(self, request):
         """
