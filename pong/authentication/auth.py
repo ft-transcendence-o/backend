@@ -40,7 +40,8 @@ backend 인증 로직
 7. OTP 입력 및 검증
 """
 TOKEN_EXIRES = 7200
-CACHE_TIMEOUT = 900  # 15분
+#TODO: this value for dev need to fix
+LOCK_ACCOUNT = 15
 MAX_ATTEMPTS = 5
 API_URL = getenv("API_URL")
 JWT_SECRET = getenv("JWT_SECRET")
@@ -241,7 +242,7 @@ class OTPView(View):
             return JsonResponse({"error": "Account is locked. try later"}, status=403)
 
         now = timezone.now()
-        if otp_data['last_attempt'] and (now - otp_data['last_attempt']).total_seconds() > CACHE_TIMEOUT:
+        if otp_data['last_attempt'] and (now - otp_data['last_attempt']).total_seconds() > LOCK_ACCOUNT:
             otp_data['attempts'] = 0
 
         otp_data['attempts'] += 1
@@ -263,7 +264,11 @@ class OTPView(View):
             return JsonResponse({"success": "OTP authentication verified"}, status=200)
 
         self.update_otp_data(user_id, otp_data)
-        return JsonResponse({"error": f"Incorrect password. Remaining attempts: {MAX_ATTEMPTS - otp_data['attempts']}"}, status=400)
+        return JsonResponse(
+            {
+                "error": "Incorrect password.",
+                "remain_attempts": MAX_ATTEMPTS - otp_data['attempts']
+            }, status=400)
 
     def get_otp_data(self, user_id):
         """
