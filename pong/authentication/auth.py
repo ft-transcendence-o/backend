@@ -239,15 +239,15 @@ class OTPView(View):
             return JsonResponse({"error": "Can't found OTP data."}, status=500)
 
         if otp_data['is_locked']:
-            return JsonResponse({"error": "Account is locked. try later"}, status=403)
-
-        now = timezone.now()
-        if otp_data['last_attempt'] and (now - otp_data['last_attempt']).total_seconds() > LOCK_ACCOUNT:
-            otp_data['attempts'] = 0
+            now = timezone.now()
+            if otp_data['last_attempt'] and (now - otp_data['last_attempt']).total_seconds() > LOCK_ACCOUNT:
+                otp_data['is_locked'] = False
+                otp_data['attempts'] = 0
+            else:
+                return JsonResponse({"error": "Account is locked. try later"}, status=403)
 
         otp_data['attempts'] += 1
         otp_data['last_attempt'] = now
-
         if otp_data['attempts'] >= MAX_ATTEMPTS:
             otp_data['is_locked'] = True
             self.update_otp_data(user_id, otp_data)
