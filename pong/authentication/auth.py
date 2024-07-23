@@ -226,12 +226,15 @@ class OTPView(View):
         """
         OTP 패스워드를 확인하는 view
         OTP 정보 확인 및 900초 지났을 경우 시도 횟수 초기화
-        계정 잠금, 정보 없음(?), OTP인증 실패 확인
+        계정 잠금, 정보 없음, OTP인증 실패 확인
+
+        cache를 사용하여 저장할 경우 퍼포먼스의 이득을 볼 수 있지만
+        데이터의 정합성을 위해서 db를 확인한다.
         """
         user_data = cache.get(f"user_data_{access_token}")
         user_id = user_data.get(id)
         otp_data = self.get_otp_data(user_id)
-        if not otp_data or not user_id:
+        if not otp_data:
             return JsonResponse({"error": "Can't found OTP data."}, status=500)
 
         if otp_data['is_locked']:
@@ -266,6 +269,8 @@ class OTPView(View):
         """
         DB에서 otp data를 받아옴
         """
+        if not user_id:
+            return None
         try:
             otp_secret = OTPSecret.objects.get(user_id=user_id)
             data = {
