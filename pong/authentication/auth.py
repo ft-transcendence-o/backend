@@ -58,6 +58,21 @@ OTP 주의사항
 3. 스로틀 속도 제한
 """
 
+class UserInfo(View):
+    @token_required
+    def get(self, request, access_token):
+        user_info = cache.get(f'user_data_{access_token}')
+        if not user_info:
+            return JsonResponse({"error": "Invalid token"}, status=401)
+        data = {
+            'id': user_info['id'],
+            'email': user_info['email'],
+            'login': user_info['login'],
+            'usual_full_name': user_info['usual_full_name'],
+            'image_link': user_info['image_link'],
+        }
+        return JsonResponse(data, status=200)
+
 class OAuthView(View):
     @token_required
     def delete(self, request, access_token):
