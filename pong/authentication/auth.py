@@ -145,7 +145,7 @@ class OAuthView(View):
                 return False, {"error": str(e)}
 
             self.set_cache(user_data, otp_data, access_token)
-            return True, otp_data['is_verified']
+            return True, otp_data.is_verified
         return False, response.json()
 
     def set_cache(self, user_data, otp_data, access_token):
