@@ -236,7 +236,6 @@ class QRcodeView(View):
 
 
 class OTPView(View):
-
     @token_required
     def post(self, request, access_token):
         """
@@ -246,6 +245,8 @@ class OTPView(View):
 
         cache를 사용하여 저장할 경우 퍼포먼스의 이득을 볼 수 있지만
         데이터의 정합성을 위해서 db를 확인한다.
+
+        :body input_password: 사용자가 입력한 OTP
         """
         user_data = cache.get(f"user_data_{access_token}")
         user_id = user_data.get('id')
@@ -254,12 +255,8 @@ class OTPView(View):
             return JsonResponse({"error": "Can't found OTP data."}, status=500)
 
         now = timezone.now()
-        if otp_data['is_locked']:
-            if otp_data['last_attempt'] and (now - otp_data['last_attempt']).total_seconds() > LOCK_ACCOUNT:
-                otp_data['is_locked'] = False
-                otp_data['attempts'] = 0
-            else:
-                return JsonResponse({"error": "Account is locked. try later"}, status=403)
+        if self.is_account_locked(otp_data, now):
+            return JsonResponse({"error": "Account is locked. try later"}, status=403)
 
         otp_data['attempts'] += 1
         otp_data['last_attempt'] = now
@@ -268,22 +265,12 @@ class OTPView(View):
             self.update_otp_data(user_id, otp_data)
             return JsonResponse({"error": "Maximum number of attempts exceeded. Please try again after 15 minutes."}, status=403)
 
-        body = json.loads(request.body.decode('utf-8'))
-        otp_code = body.get("input_password")
-        if pyotp.TOTP(otp_data['secret']).verify(otp_code):
-            otp_data['attempts'] = 0
-            otp_data['is_locked'] = False
-            otp_data['is_verified'] = True
-            cache.set(f'otp_passed_{access_token}', user_data, timeout=TOKEN_EXPIRES)
-            self.update_otp_data(user_id, otp_data)
+        if self.verify_otp(request, otp_data['secret']):
+            self.update_otp_success(otp_data, access_token, user_data)
             return JsonResponse({"success": "OTP authentication verified"}, status=200)
 
         self.update_otp_data(user_id, otp_data)
-        return JsonResponse(
-            {
-                "error": "Incorrect password.",
-                "remain_attempts": MAX_ATTEMPTS - otp_data['attempts']
-            }, status=400)
+        return self.password_fail_response(otp_data['attempts'])
 
     def get_otp_data(self, user_id):
         """
@@ -303,6 +290,34 @@ class OTPView(View):
         except OTPSecret.DoesNotExist:
             return None
         return data
+
+    def password_fail_response(self, attempts):
+        return JsonResponse(
+            {
+                "error": "Incorrect password.",
+                "remain_attempts": MAX_ATTEMPTS - attempts
+            }, status=400)
+
+    def is_account_locked(self, otp_data, now):
+        if otp_data['is_locked']:
+            if otp_data['last_attempt'] and (now - otp_data['last_attempt']).total_seconds() > LOCK_ACCOUNT:
+                otp_data['is_locked'] = False
+                otp_data['attempts'] = 0
+                return False
+            return True
+        return False
+
+    def verify_otp(self, request, secret):
+        body = json.loads(request.body.decode('utf-8'))
+        otp_code = body.get("input_password")
+        return pyotp.TOTP(secret).verify(otp_code)
+
+    def update_otp_success(self, otp_data, access_token, user_data):
+        otp_data['attempts'] = 0
+        otp_data['is_locked'] = False
+        otp_data['is_verified'] = True
+        cache.set(f'otp_passed_{access_token}', user_data, timeout=TOKEN_EXPIRES)
+        self.update_otp_data(user_data['id'], otp_data)
 
     def update_otp_data(self, user_id, data):
         """
