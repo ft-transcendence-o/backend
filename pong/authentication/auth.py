@@ -39,7 +39,7 @@ backend 인증 로직
 6. QR code를 사용해 google authenticator 등록
 7. OTP 입력 및 검증
 """
-TOKEN_EXIRES = 7200
+TOKEN_EXPIRES= 7200
 #TODO: this value for dev need to fix
 LOCK_ACCOUNT = 15
 MAX_ATTEMPTS = 5
@@ -161,7 +161,7 @@ class OAuthView(View):
             'is_verified': otp_data.is_verified,
             'passed_2fa': False,
         }
-        cache.set(f'user_data_{access_token}', cache_value, TOKEN_EXIRES)
+        cache.set(f'user_data_{access_token}', cache_value, TOKEN_EXPIRES
 
     def get_or_create_user(self, data):
         user, _ = User.objects.get_or_create(
@@ -259,7 +259,7 @@ class OTPView(View):
             otp_data['attempts'] = 0
             otp_data['is_locked'] = False
             user_data['passed_2fa'] = True
-            cache.set(f'user_data_{access_token}', user_data, timeout=cache.ttl(f'user_data_{access_token}'))
+            cache.set(f'user_data_{access_token}', user_data, timeout=TOKEN_EXPIRES)
             self.update_otp_data(user_id, otp_data)
             return JsonResponse({"success": "OTP authentication verified"}, status=200)
 
