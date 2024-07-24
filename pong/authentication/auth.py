@@ -119,8 +119,8 @@ class OAuthView(View):
             return JsonResponse(
                 {
                     "jwt": encoded_jwt,
-                    "passed_2fa": response["passed_2fa"],
-                    "is_verified": response["is_verified"]
+                    "otp_verified": True if cache.get(f'otp_passed_{access_token}') else False,
+                    "show_otp_qr": response["is_verified"]
                 }, status=200)
 
         except requests.RequestException as e:
@@ -159,9 +159,8 @@ class OAuthView(View):
             'need_otp': user_data.need_otp,
             'secret': otp_data.secret,
             'is_verified': otp_data.is_verified,
-            'passed_2fa': False,
         }
-        cache.set(f'user_data_{access_token}', cache_value, TOKEN_EXPIRES
+        cache.set(f'user_data_{access_token}', cache_value, TOKEN_EXPIRES)
 
     def get_or_create_user(self, data):
         user, _ = User.objects.get_or_create(
@@ -258,8 +257,7 @@ class OTPView(View):
         if pyotp.TOTP(otp_data['secret']).verify(otp_code):
             otp_data['attempts'] = 0
             otp_data['is_locked'] = False
-            user_data['passed_2fa'] = True
-            cache.set(f'user_data_{access_token}', user_data, timeout=TOKEN_EXPIRES)
+            cache.set(f'otp_passed_{access_token}', user_data, timeout=TOKEN_EXPIRES)
             self.update_otp_data(user_id, otp_data)
             return JsonResponse({"success": "OTP authentication verified"}, status=200)
 
