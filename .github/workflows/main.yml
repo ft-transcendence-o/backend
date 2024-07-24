@@ -20,8 +20,8 @@ jobs:
           key: ${{ secrets.REMOTE_PRIVATE_KEY }}
           port: ${{ secrets.REMOTE_SSH_PORT }}
           script: |
-            cd /home/ubuntu/pong/pong
+            cd /home/ubuntu/transcen/backend/pong
             git pull https://${{ secrets.GIT_USER }}:${{ secrets.GIT_PASSWORD }}@github.com/ft-transcendence-o/backend.git
-            cd /home/ubuntu/pong
+            cd /home/ubuntu/transcen
             sudo docker compose down
             sudo docker compose up --build -d

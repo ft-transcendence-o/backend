@@ -16,17 +16,23 @@ def token_required(func):
         :param request의 헤더에 JWT를 사용한 access_token을 담아서 보낸다
         """
         encoded_jwt = request.headers.get("Authorization")
-        decoded_jwt = jwt.decode(encoded_jwt, JWT_SECRET, algorithms=["HS256"])
+        if not encoded_jwt:
+            return JsonResponse({"error": "No jwt in request"}, status=401)
+        if encoded_jwt.startswith("Bearer "):
+            encoded_jwt = encoded_jwt[7:]
+
+        try:
+            decoded_jwt = jwt.decode(encoded_jwt, JWT_SECRET, algorithms=["HS256"])
+        except:
+            return JsonResponse({"error": "Decoding jwt failed"}, status=401)
+
         access_token = decoded_jwt.get("access_token")
         if not access_token:
-            return JsonResponse({'error': 'No access token provided'}, status=401)
-
-        if access_token.startswith('Bearer '):
-            access_token = access_token[7:]
+            return JsonResponse({"error": "No access token provided"}, status=401)
 
         is_valid_token = cache.get(f'user_data_{access_token}')
         if not is_valid_token:
-            return JsonResponse({'error': 'Invalid token'}, status=401)
+            return JsonResponse({"error": "Invalid token"}, status=401)
 
         return func(self, request, access_token)
     return wrapper
