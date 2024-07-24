@@ -89,68 +89,84 @@ class OAuthView(View):
         frontend에서 /oauth/authorize 경로로 보낸 후 redirection되어서 오는 곳.
         querystring으로 code를 가져온 후 code를 access_token으로 교환
         access_token을 cache에 저장해서 expires_in을 체크한다.
+
+        :body code: access_token과 교환하기 위한 code
         """
-        body = json.loads(request.body.decode('utf-8'))
-        code = body.get("code")
+        code = self.extract_code(request)
         if not code:
             return JsonResponse({"error": "No code value in querystring"}, status=400)
+
+        access_token = self.exchange_code_for_token(code)
+        if not access_token:
+            return JsonResponse({"error": "Failed to obtain access token"}, status=400)
+
+        success, user_info = self.get_user_info(access_token)
+        if not success:
+            return JsonResponse({"error": user_info}, status=500)
+
+        return self.prepare_response(access_token, user_info)
+
+    def extract_code(self, request):
+        body = json.loads(request.body.decode('utf-8'))
+        return body.get("code")
+
+    def exchange_code_for_token(self, code):
         data = {
             "grant_type": "authorization_code",
             "client_id": INTRA_UID,
             "client_secret": INTRA_SECRET_KEY,
             "code": code,
-            "redirect_uri": getenv("REDIRECT_URI"),
-            "state": getenv("STATE"),
+            "redirect_uri": REDIRECT_URI,
+            "state": STATE,
         }
         try:
             response = requests.post(f'{API_URL}/oauth/token', data=data)
             response_data = response.json()
             if response.status_code != 200:
-                return JsonResponse(response_data, status=response.status_code)
-
-            access_token = response_data.get("access_token")
-            if not access_token:
-                return JsonResponse({"error": "No access token in response"}, status=400)
-
-            # TODO: async(get_user_info), return Response
-            success, response = self.get_user_info(access_token)
-            if success == False:
-                return JsonResponse({"error": response}, status=500)
-            encoded_jwt = jwt.encode({"access_token": access_token}, JWT_SECRET, algorithm="HS256")
-            return JsonResponse(
-                {
-                    "jwt": encoded_jwt,
-                    "otp_verified": True if cache.get(f'otp_passed_{access_token}') else False,
-                    "show_otp_qr": response
-                }, status=200)
-
-        except requests.RequestException as e:
-            error_message = {"error": str(e)}
-            return JsonResponse(error_message, status=500)
+                return None
+            return response_data.get("access_token")
+        except requests.RequestException:
+            return None
 
     def get_user_info(self, access_token):
         """
         access_token을 활용하여 user의 정보를 받아온다.
-        정보를 받아와서 db에 있는지 확인한 후 없을 경우 생성
+        정보를 받아와서 user db에 있는지 확인한 후 없을 경우 생성
         """
-        headers = { "Authorization": f'Bearer {access_token}' }
-        response = requests.get(f'{API_URL}/v2/me', headers=headers)
-        if response.status_code == 200:
-            data = response.json()
-            #TODO: asynchronous if can
-            try:
-                with transaction.atomic():
-                    user_data = self.get_or_create_user(data)
-                    otp_data = self.get_or_create_otp_secret(data['id'])
-            except transaction.TransactionManagementError as e:
-                return False, {"error": str(e)}
+        headers = {"Authorization": f'Bearer {access_token}'}
+        try:
+            response = requests.get(f'{API_URL}/v2/me', headers=headers)
+            if response.status_code == 200:
+                data = response.json()
+                return self.process_user_data(data, access_token)
+            return False, response.json()
+        except requests.RequestException as e:
+            return False, str(e)
 
+    def process_user_data(self, data, access_token):
+        """
+        사용자 데이터 처리 및 OTP 데이터 생성
+        필요한 정보는 cache에 저장
+        """
+        try:
+            with transaction.atomic():
+                user_data = self.get_or_create_user(data)
+                otp_data = self.get_or_create_otp_secret(data['id'])
             self.set_cache(user_data, otp_data, access_token)
-            return True, otp_data.is_verified
-        return False, response.json()
+            return True, {"user": user_data, "otp": otp_data}
+        except transaction.TransactionManagementError as e:
+            return False, str(e)
+
+    def prepare_response(self, access_token, user_info):
+        encoded_jwt = jwt.encode({"access_token": access_token}, JWT_SECRET, algorithm="HS256")
+        otp_verified = cache.get(f'otp_passed_{access_token}', False)
+        return JsonResponse({
+            "jwt": encoded_jwt,
+            "otp_verified": otp_verified,
+            "show_otp_qr": user_info['otp'].is_verified
+        }, status=200)
 
     def set_cache(self, user_data, otp_data, access_token):
-        # TODO seperate user and otp cache
         cache_value = {
             'id': user_data.id,
             'email': user_data.email,
