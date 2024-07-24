@@ -280,7 +280,8 @@ class OTPView(View):
                 'secret': otp_secret.secret,
                 'attempts': otp_secret.attempts,
                 'last_attempt': otp_secret.last_attempt,
-                'is_locked': otp_secret.is_locked
+                'is_locked': otp_secret.is_locked,
+                'is_verified': otp_secret.is_verified
             }
         except OTPSecret.DoesNotExist:
             return None
