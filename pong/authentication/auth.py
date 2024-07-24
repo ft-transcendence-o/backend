@@ -78,7 +78,7 @@ class OAuthView(View):
     @token_required
     def delete(self, request, access_token):
         """
-        access_token 삭제
+        cache에 저장된 유저 정보 및 OTP패스 정보 폐기
         """
         cache.delete(f'user_data_{access_token}')
         cache.delete(f'otp_passed_{access_token}')
