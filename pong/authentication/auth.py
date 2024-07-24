@@ -120,7 +120,7 @@ class OAuthView(View):
                 {
                     "jwt": encoded_jwt,
                     "otp_verified": True if cache.get(f'otp_passed_{access_token}') else False,
-                    "show_otp_qr": response["is_verified"]
+                    "show_otp_qr": response
                 }, status=200)
 
         except requests.RequestException as e:
@@ -145,7 +145,7 @@ class OAuthView(View):
                 return False, {"error": str(e)}
 
             self.set_cache(user_data, otp_data, access_token)
-            return True, cache.get(f'user_data_{access_token}')
+            return True, otp_data['is_verified']
         return False, response.json()
 
     def set_cache(self, user_data, otp_data, access_token):
@@ -158,7 +158,6 @@ class OAuthView(View):
             'image_link': user_data.image_link,
             'need_otp': user_data.need_otp,
             'secret': otp_data.secret,
-            'is_verified': otp_data.is_verified,
         }
         cache.set(f'user_data_{access_token}', cache_value, TOKEN_EXPIRES)
 
@@ -257,6 +256,7 @@ class OTPView(View):
         if pyotp.TOTP(otp_data['secret']).verify(otp_code):
             otp_data['attempts'] = 0
             otp_data['is_locked'] = False
+            otp_data['is_verified'] = True
             cache.set(f'otp_passed_{access_token}', user_data, timeout=TOKEN_EXPIRES)
             self.update_otp_data(user_id, otp_data)
             return JsonResponse({"success": "OTP authentication verified"}, status=200)
@@ -294,5 +294,6 @@ class OTPView(View):
         OTPSecret.objects.filter(user_id=user_id).update(
             attempts=data['attempts'],
             last_attempt=data['last_attempt'],
-            is_locked=data['is_locked']
+            is_locked=data['is_locked'],
+            is_verified=data['is_verified']
         )
