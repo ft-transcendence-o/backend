@@ -1,3 +1,4 @@
+from asgiref.sync import sync_to_async
 from django.http import JsonResponse
 from django.core.exceptions import ValidationError
 from django.core.cache import cache
@@ -5,8 +6,8 @@ from django.utils import timezone
 from django.views import View
 from django.db import transaction
 from os import getenv
+import aiohttp
 import pyotp
-import requests
 import jwt
 import json
 
@@ -61,8 +62,8 @@ OTP 주의사항
 
 class UserInfo(View):
     @token_required
-    def get(self, request, access_token):
-        user_info = cache.get(f'user_data_{access_token}')
+    async def get(self, request, access_token):
+        user_info = await cache.aget(f'user_data_{access_token}')
         if not user_info:
             return JsonResponse({"error": "Invalid token"}, status=401)
         data = {
@@ -76,7 +77,7 @@ class UserInfo(View):
 
 class OAuthView(View):
     @token_required
-    def delete(self, request, access_token):
+    async def delete(self, request, access_token):
         """
         cache에 저장된 유저 정보 및 OTP패스 정보 폐기
         """
@@ -84,7 +85,7 @@ class OAuthView(View):
         cache.delete(f'otp_passed_{access_token}')
         return JsonResponse({"message": "logout success"}, status=200)
 
-    def post(self, request):
+    async def post(self, request):
         """
         frontend에서 /oauth/authorize 경로로 보낸 후 redirection되어서 오는 곳.
         querystring으로 code를 가져온 후 code를 access_token으로 교환
@@ -96,21 +97,21 @@ class OAuthView(View):
         if not code:
             return JsonResponse({"error": "No code value in querystring"}, status=400)
 
-        access_token = self.exchange_code_for_token(code)
+        access_token = await self.exchange_code_for_token(code)
         if not access_token:
             return JsonResponse({"error": "Failed to obtain access token"}, status=400)
 
-        success, user_info = self.get_user_info(access_token)
+        success, user_info = await self.get_user_info(access_token)
         if not success:
             return JsonResponse({"error": user_info}, status=500)
 
-        return self.prepare_response(access_token, user_info)
+        return await self.prepare_response(access_token, user_info)
 
     def extract_code(self, request):
         body = json.loads(request.body.decode('utf-8'))
         return body.get("code")
 
-    def exchange_code_for_token(self, code):
+    async def exchange_code_for_token(self, code):
         data = {
             "grant_type": "authorization_code",
             "client_id": INTRA_UID,
@@ -120,29 +121,33 @@ class OAuthView(View):
             "state": STATE,
         }
         try:
-            response = requests.post(f'{API_URL}/oauth/token', data=data)
-            response_data = response.json()
-            if response.status_code != 200:
-                return None
-            return response_data.get("access_token")
-        except requests.RequestException:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(f'{API_URL}/oauth/token', data=data) as response:
+                    if response.status != 200:
+                        # TODO: modify return value something message
+                        return None
+                    response_data = await response.json()
+                    return response_data.get("access_token")
+        except aiohttp.ClientError:
             return None
 
-    def get_user_info(self, access_token):
+    async def get_user_info(self, access_token):
         """
         access_token을 활용하여 user의 정보를 받아온다.
         정보를 받아와서 user db에 있는지 확인한 후 없을 경우 생성
         """
         headers = {"Authorization": f'Bearer {access_token}'}
         try:
-            response = requests.get(f'{API_URL}/v2/me', headers=headers)
-            if response.status_code == 200:
-                data = response.json()
-                return self.process_user_data(data, access_token)
-            return False, response.json()
-        except requests.RequestException as e:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(f'{API_URL}/v2/me', headers=headers) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        return await self.process_user_data(data, access_token)
+                    return False, await response.json()
+        except aiohttp.ClientError as e:
             return False, str(e)
 
+    @sync_to_async
     def process_user_data(self, data, access_token):
         """
         사용자 데이터 처리 및 OTP 데이터 생성
@@ -157,9 +162,9 @@ class OAuthView(View):
         except transaction.TransactionManagementError as e:
             return False, str(e)
 
-    def prepare_response(self, access_token, user_info):
+    async def prepare_response(self, access_token, user_info):
         encoded_jwt = jwt.encode({"access_token": access_token}, JWT_SECRET, algorithm="HS256")
-        otp_verified = cache.get(f'otp_passed_{access_token}', False)
+        otp_verified = await cache.aget(f'otp_passed_{access_token}', False)
         return JsonResponse({
             "jwt": encoded_jwt,
             "otp_verified": otp_verified,
@@ -204,11 +209,10 @@ class OAuthView(View):
 
 
 class QRcodeView(View):
-
     @token_required
-    def get(self, request, access_token):
+    async def get(self, request, access_token):
         try:
-            user_data = self.get_user_data(access_token)
+            user_data = await self.get_user_data(access_token)
             secret = self.get_user_secret(user_data)
             uri = self.generate_otp_uri(user_data, secret)
             return JsonResponse({"otpauth_uri": uri}, status=200)
@@ -216,8 +220,8 @@ class QRcodeView(View):
             return JsonResponse({"error": str(e)}, status=400)
  
     # It check user data twice but still need
-    def get_user_data(self, access_token):
-        user_data = cache.get(f'user_data_{access_token}')
+    async def get_user_data(self, access_token):
+        user_data = await cache.aget(f'user_data_{access_token}')
         if not user_data:
             raise ValidationError("User data not found")
         return user_data
@@ -237,7 +241,7 @@ class QRcodeView(View):
 
 class OTPView(View):
     @token_required
-    def post(self, request, access_token):
+    async def post(self, request, access_token):
         """
         OTP 패스워드를 확인하는 view
         OTP 정보 확인 및 900초 지났을 경우 시도 횟수 초기화
@@ -248,9 +252,9 @@ class OTPView(View):
 
         :body input_password: 사용자가 입력한 OTP
         """
-        user_data = cache.get(f"user_data_{access_token}")
+        user_data = await cache.aget(f"user_data_{access_token}")
         user_id = user_data.get('id')
-        otp_data = self.get_otp_data(user_id)
+        otp_data = await self.get_otp_data(user_id)
         if not otp_data:
             return JsonResponse({"error": "Can't found OTP data."}, status=500)
 
@@ -262,16 +266,17 @@ class OTPView(View):
         otp_data['last_attempt'] = now
         if otp_data['attempts'] >= MAX_ATTEMPTS:
             otp_data['is_locked'] = True
-            self.update_otp_data(user_id, otp_data)
+            await self.update_otp_data(user_id, otp_data)
             return JsonResponse({"error": "Maximum number of attempts exceeded. Please try again after 15 minutes."}, status=403)
 
         if self.verify_otp(request, otp_data['secret']):
-            self.update_otp_success(otp_data, access_token, user_data)
+            await self.update_otp_success(otp_data, access_token, user_data)
             return JsonResponse({"success": "OTP authentication verified"}, status=200)
 
-        self.update_otp_data(user_id, otp_data)
+        await self.update_otp_data(user_id, otp_data)
         return self.password_fail_response(otp_data['attempts'])
 
+    @sync_to_async
     def get_otp_data(self, user_id):
         """
         DB에서 otp data를 받아옴
@@ -312,6 +317,7 @@ class OTPView(View):
         otp_code = body.get("input_password")
         return pyotp.TOTP(secret).verify(otp_code)
 
+    @sync_to_async
     def update_otp_success(self, otp_data, access_token, user_data):
         otp_data['attempts'] = 0
         otp_data['is_locked'] = False
@@ -319,6 +325,7 @@ class OTPView(View):
         cache.set(f'otp_passed_{access_token}', user_data, timeout=TOKEN_EXPIRES)
         self.update_otp_data(user_data['id'], otp_data)
 
+    @sync_to_async
     def update_otp_data(self, user_id, data):
         """
         OTP 시도 횟수 및 시간 저장
