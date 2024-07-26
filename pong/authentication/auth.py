@@ -178,7 +178,7 @@ class OAuthView(View):
 
     async def prepare_response(self, access_token, user_info):
         encoded_jwt = jwt.encode({"access_token": access_token}, JWT_SECRET, algorithm="HS256")
-        otp_verified = await cache.aget(f'otp_passed_{access_token}', False)
+        otp_verified = await cache.aget(f'otp_passed_{access_token}')
         return JsonResponse({
             "jwt": encoded_jwt,
             "otp_verified": otp_verified,
@@ -194,7 +194,7 @@ class OAuthView(View):
             'image_link': user_data.image_link,
             'need_otp': user_data.need_otp,
             'secret': otp_data.secret,
-            'is_verified': otp_data.is_verified,
+            'is_verified': otp_data.is_verified
         }
         cache.set(f'user_data_{access_token}', cache_value, TOKEN_EXPIRES)
 
