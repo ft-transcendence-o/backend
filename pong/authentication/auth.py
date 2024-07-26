@@ -192,6 +192,7 @@ class OAuthView(View):
             'image_link': user_data.image_link,
             'need_otp': user_data.need_otp,
             'secret': otp_data.secret,
+            'is_verified': otp_data.is_verified,
         }
         cache.set(f'user_data_{access_token}', cache_value, TOKEN_EXPIRES)
 
