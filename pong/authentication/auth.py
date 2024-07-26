@@ -1,5 +1,5 @@
 from asgiref.sync import sync_to_async
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseRedirect
 from django.core.exceptions import ValidationError
 from django.core.cache import cache
 from django.utils import timezone
@@ -50,6 +50,7 @@ INTRA_UID = getenv("INTRA_UID")
 INTRA_SECRET_KEY = getenv("INTRA_SECRET_KEY")
 REDIRECT_URI = getenv("REDIRECT_URI")
 STATE = getenv("STATE")
+AUTH_PAGE = getenv("AUTH_PAGE")
 
 
 """
@@ -76,6 +77,18 @@ class UserInfo(View):
         return JsonResponse(data, status=200)
 
 class OAuthView(View):
+    async def get(self, request):
+        code = request.GET.get('code')
+        access_token = await self.exchange_code_for_token(code)
+        if not access_token:
+            return JsonResponse({"error": "Failed to obtain access token"}, status=400)
+
+        success, user_info = await self.get_user_info(access_token)
+        if not success:
+            return JsonResponse({"error": user_info}, status=500)
+        return HttpResponseRedirect("http://127.0.0.1:5500/main")
+        return await self.prepare_response(access_token, user_info)
+
     @token_required
     async def delete(self, request, access_token):
         """
@@ -104,7 +117,6 @@ class OAuthView(View):
         success, user_info = await self.get_user_info(access_token)
         if not success:
             return JsonResponse({"error": user_info}, status=500)
-
         return await self.prepare_response(access_token, user_info)
 
     def extract_code(self, request):
@@ -337,3 +349,8 @@ class OTPView(View):
             is_locked=data['is_locked'],
             is_verified=data['is_verified']
         )
+
+
+class Login(View):
+    async def get(self, request):
+        return HttpResponseRedirect(AUTH_PAGE)
