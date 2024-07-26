@@ -53,17 +53,14 @@ STATE = getenv("STATE")
 AUTH_PAGE = getenv("AUTH_PAGE")
 
 
-"""
-TODO
-OTP 주의사항
-1. HTTPS 통신 사용
-2. OTP브루트포스 방지 (타임스탬프 확인)
-3. 스로틀 속도 제한
-"""
-
 class UserInfo(View):
     @token_required
     async def get(self, request, access_token):
+        """
+        main 화면에서 보여줄 유저 정보를 반환하는 API
+
+        :header Authorization: 인증을 위한 JWT
+        """
         user_info = await cache.aget(f'user_data_{access_token}')
         if not user_info:
             return JsonResponse({"error": "Invalid token"}, status=401)
@@ -78,6 +75,13 @@ class UserInfo(View):
 
 class OAuthView(View):
     async def get(self, request):
+        """
+        code값을 token으로 변환한 후
+        http header에 cookie를 저장하여 반환
+        frontend의 main페이지로 리다이렉션
+
+        :query code: 42OAuth에서 받음 code값
+        """
         code = request.GET.get('code')
         access_token = await self.exchange_code_for_token(code)
         if not access_token:
@@ -95,6 +99,8 @@ class OAuthView(View):
     async def delete(self, request, access_token):
         """
         cache에 저장된 유저 정보 및 OTP패스 정보 폐기
+
+        :header Authorization: 인증을 위한 JWT
         """
         cache.delete(f'user_data_{access_token}')
         cache.delete(f'otp_passed_{access_token}')
@@ -102,9 +108,9 @@ class OAuthView(View):
 
     async def post(self, request):
         """
-        frontend에서 /oauth/authorize 경로로 보낸 후 redirection되어서 오는 곳.
+        frontend에서 /oauth/authorize 경로로 보낸 후 redirection되어서 오는 곳
         querystring으로 code를 가져온 후 code를 access_token으로 교환
-        access_token을 cache에 저장해서 expires_in을 체크한다.
+        access_token을 cache에 저장해서 expires_in을 체크한다
 
         :body code: access_token과 교환하기 위한 code
         """
@@ -126,6 +132,7 @@ class OAuthView(View):
         return body.get("code")
 
     async def exchange_code_for_token(self, code):
+        """42API에서 유저 정보를 받아온다"""
         data = {
             "grant_type": "authorization_code",
             "client_id": INTRA_UID,
@@ -147,7 +154,7 @@ class OAuthView(View):
 
     async def get_user_info(self, access_token):
         """
-        access_token을 활용하여 user의 정보를 받아온다.
+        access_token을 활용하여 user의 정보를 받아온다
         정보를 받아와서 user db에 있는지 확인한 후 없을 경우 생성
         """
         headers = {"Authorization": f'Bearer {access_token}'}
@@ -226,6 +233,11 @@ class OAuthView(View):
 class QRcodeView(View):
     @token_required
     async def get(self, request, access_token):
+        """
+        QRcode에 필요한 secret값을 포함한 URI를 반환하는 함수
+
+        :header Authorization: 인증을 위한 JWT
+        """
         try:
             user_data = await self.get_user_data(access_token)
             secret = self.get_user_secret(user_data)
@@ -263,8 +275,9 @@ class OTPView(View):
         계정 잠금, 정보 없음, OTP인증 실패 확인
 
         cache를 사용하여 저장할 경우 퍼포먼스의 이득을 볼 수 있지만
-        데이터의 정합성을 위해서 db를 확인한다.
+        데이터의 정합성을 위해서 db를 확인한다
 
+        :header Authorization: 인증을 위한 JWT
         :body input_password: 사용자가 입력한 OTP
         """
         user_data = await cache.aget(f"user_data_{access_token}")
@@ -293,9 +306,6 @@ class OTPView(View):
 
     @sync_to_async
     def get_otp_data(self, user_id):
-        """
-        DB에서 otp data를 받아옴
-        """
         if not user_id:
             return None
         try:
