@@ -11,7 +11,7 @@ import pyotp
 import jwt
 import json
 
-from authentication.decorators import token_required
+from authentication.decorators import token_required, login_required
 from authentication.models import User, OTPSecret
 
 """
@@ -86,8 +86,10 @@ class OAuthView(View):
         success, user_info = await self.get_user_info(access_token)
         if not success:
             return JsonResponse({"error": user_info}, status=500)
-        return HttpResponseRedirect("http://127.0.0.1:5500/main")
-        return await self.prepare_response(access_token, user_info)
+        encoded_jwt = jwt.encode({"access_token": access_token}, JWT_SECRET, algorithm="HS256")
+        response = HttpResponseRedirect("http://127.0.0.1:5500/main")
+        response.set_cookie("jwt", encoded_jwt)
+        return response
 
     @token_required
     async def delete(self, request, access_token):
@@ -355,3 +357,9 @@ class OTPView(View):
 class Login(View):
     async def get(self, request):
         return HttpResponseRedirect(AUTH_PAGE)
+    
+
+class Test(View):
+    @login_required
+    async def get(self, request):
+        return JsonResponse({"hi": "hi"})
