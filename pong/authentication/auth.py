@@ -41,8 +41,7 @@ backend 인증 로직
 7. OTP 입력 및 검증
 """
 TOKEN_EXPIRES= 7200
-#TODO: this value for dev need to fix
-LOCK_ACCOUNT = 15
+LOCK_ACCOUNT = 900
 MAX_ATTEMPTS = 5
 API_URL = getenv("API_URL")
 JWT_SECRET = getenv("JWT_SECRET")
@@ -145,7 +144,6 @@ class OAuthView(View):
             async with aiohttp.ClientSession() as session:
                 async with session.post(f'{API_URL}/oauth/token', data=data) as response:
                     if response.status != 200:
-                        # TODO: modify return value something message
                         return None
                     response_data = await response.json()
                     return response_data.get("access_token")
