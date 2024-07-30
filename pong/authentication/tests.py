@@ -12,7 +12,7 @@ class TokenRequiredDecoratorTests(TestCase):
         self.factory = RequestFactory()
 
     @token_required
-    def dummy_view(self, request, access_token):
+    async def dummy_view(self, request, access_token):
         return JsonResponse({"access_token": access_token})
 
     async def test_no_jwt_in_request(self):
