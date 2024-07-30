@@ -36,7 +36,7 @@ class TokenRequiredDecoratorTests(TestCase):
         self.assertEqual(json.loads(response.content.decode('utf-8')), {"error": "No access token provided"})
 
     @patch('authentication.decorators.jwt.decode')
-    @patch('authentication.decorators.cache.get')
+    @patch('authentication.decorators.cache.aget')
     async def test_invalid_access_token(self, mock_cache_get, mock_jwt_decode):
         mock_jwt_decode.return_value = {"access_token": "test_token"}
         mock_cache_get.return_value = None
@@ -46,7 +46,7 @@ class TokenRequiredDecoratorTests(TestCase):
         self.assertEqual(json.loads(response.content.decode('utf-8')), {"error": "Invalid token"})
 
     @patch('authentication.decorators.jwt.decode')
-    @patch('authentication.decorators.cache.get')
+    @patch('authentication.decorators.cache.aget')
     async def test_valid_access_token(self, mock_cache_get, mock_jwt_decode):
         mock_jwt_decode.return_value = {"access_token": "test_token"}
         mock_cache_get.return_value = True
