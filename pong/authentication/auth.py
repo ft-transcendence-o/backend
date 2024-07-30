@@ -1,6 +1,5 @@
 from asgiref.sync import sync_to_async
 from django.http import JsonResponse, HttpResponseRedirect
-from django.core.exceptions import ValidationError
 from django.core.cache import cache
 from django.utils import timezone
 from django.views import View
@@ -241,20 +240,20 @@ class QRcodeView(View):
             secret = self.get_user_secret(user_data)
             uri = self.generate_otp_uri(user_data, secret)
             return JsonResponse({"otpauth_uri": uri}, status=200)
-        except ValidationError as e:
+        except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
  
     # It check user data twice but still need
     async def get_user_data(self, access_token):
         user_data = await cache.aget(f'user_data_{access_token}')
         if not user_data:
-            raise ValidationError("User data not found")
+            raise Exception("User data not found")
         return user_data
 
     def get_user_secret(self, user_data):
         secret = user_data.get('secret')
         if not secret:
-            raise ValidationError("User secret not found")
+            raise Exception("User secret not found")
         return secret
 
     def generate_otp_uri(self, user_data, secret):
