@@ -2,7 +2,7 @@ FROM python:3.11
 
 RUN mkdir /app
 WORKDIR /app
-COPY ./backend .
+COPY . .
 
 RUN pip install -r ./requirements.txt
 
@@ -11,7 +11,7 @@ RUN mkdir logs
 RUN touch logs/debug.log
 
 RUN echo '#!/bin/bash\n\n\
-python manage.py makemigrations\n\
+python manage.py makemigrations authentication\n\
 python manage.py makemigrations game\n\
 python manage.py migrate\n\
 python manage.py collectstatic --noinput\n\
