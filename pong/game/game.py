@@ -1,6 +1,6 @@
 from django.http import JsonResponse
 from django.core.cache import cache
-from authentication.decorators import token_required
+from authentication.decorators import login_required
 from .models import Game, Tournament
 from django.views import View
 import json
@@ -19,7 +19,7 @@ def validate_game(data, mode):
 
 class GameView(View):
 
-    @token_required
+    @login_required
     def get(self, request, access_token):
         user = cache.get(f'user_data_{access_token}')
         page_number = int(request.GET.get('page', 1))
@@ -62,7 +62,7 @@ class GameView(View):
             }
         }, safe=False)
 
-    @token_required
+    @login_required
     def post(self, request, access_token):
         user = cache.get(f'user_data_{access_token}')
         try:
@@ -84,7 +84,7 @@ class GameView(View):
 
 class TournamentView(View):
 
-    @token_required
+    @login_required
     def post(self, request, access_token):
         user = cache.get(f'user_data_{access_token}')
         try:
