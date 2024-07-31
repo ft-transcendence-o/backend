@@ -7,8 +7,9 @@ from unittest.mock import patch, MagicMock
 import json
 
 
-
 class UserInfoTestCase(TestCase):
+    """Unit tests for UserInfo View class"""
+
     def setUp(self):
         self.client = AsyncClient()
         self.url = reverse('user_info')
@@ -23,6 +24,10 @@ class UserInfoTestCase(TestCase):
         }
 
     async def test_get_user_info_success(self):
+        """Test UserInfo View
+
+        정상적으로 유저 정보를 반환하는 경우
+        """
         with patch('authentication.decorators.validate_jwt') as mock_validate_jwt, \
             patch('authentication.auth.cache.aget') as mock_cache_aget, \
             patch('authentication.auth.token_required') as mock_token_required:
@@ -40,6 +45,10 @@ class UserInfoTestCase(TestCase):
             self.assertEqual(response.json(), self.user_data)
 
     async def test_get_user_info_fail(self):
+        """Test UserInfo View
+
+        캐싱에 실패하여 유저 정보를 가져오지 못함
+        """
         with patch('authentication.decorators.validate_jwt') as mock_validate_jwt, \
             patch('authentication.auth.cache.aget') as mock_cache_aget, \
             patch('authentication.auth.token_required') as mock_token_required:
@@ -57,6 +66,10 @@ class UserInfoTestCase(TestCase):
             self.assertEqual(response.json(), {"error": "Invalid token"})
 
     async def test_get_invalid_token(self):
+        """Test UserInfo View
+
+        헤더에 JWT가 포함되어 있지 않음
+        """
         with patch('authentication.auth.cache.aget') as mock_cache_aget, \
             patch('authentication.auth.token_required') as mock_token_required:
 
@@ -70,11 +83,15 @@ class UserInfoTestCase(TestCase):
 
 
     async def test_get_no_token(self):
+        """Test UserInfo View
+
+        캐싱에 실패하여 유저 정보를 가져오지 못한 경우
+        """
         with patch('authentication.auth.token_required') as mock_token_required:
             mock_response = MagicMock()
             mock_response.status_code = 401
             mock_response.json.return_value = {"error": "No jwt in request"}
-            mock_token_required.side_effect = lambda func: lambda request, *args, **kwargs: mock_response
+            mock_token_required.return_value = lambda f: f
 
             response = await self.client.get(self.url)
 
@@ -82,8 +99,9 @@ class UserInfoTestCase(TestCase):
             self.assertEqual(response.json(), {"error": "No jwt in request"})
 
 
-
 class QRcodeViewTestCase(TestCase):
+    """Unit tests for QRcode View class"""
+
     def setUp(self):
         self.client = AsyncClient()
         self.url = reverse('otp_qrcode')
@@ -99,6 +117,10 @@ class QRcodeViewTestCase(TestCase):
         }
 
     async def test_get_qrcode_success(self):
+        """Test QRcode View
+
+        성공적으로  QRcode를 받아옴
+        """
         with patch('authentication.decorators.validate_jwt') as mock_validate_jwt, \
             patch('authentication.auth.cache.aget') as mock_cache_aget, \
             patch('authentication.auth.token_required') as mock_token_required:
@@ -116,6 +138,10 @@ class QRcodeViewTestCase(TestCase):
             self.assertIn('otpauth_uri', response.json())
 
     async def test_get_user_info_no_user_data(self):
+        """Test QRcode View
+
+        user_data를 찾지 못해서 실패한 경우
+        """
         with patch('authentication.decorators.validate_jwt') as mock_validate_jwt, \
             patch('authentication.auth.cache.aget') as mock_cache_aget, \
             patch('authentication.auth.token_required') as mock_token_required:
@@ -133,6 +159,10 @@ class QRcodeViewTestCase(TestCase):
             self.assertEqual(response.json(), {"error": "User data not found"})
 
     async def test_get_user_info_no_secret(self):
+        """Test QRcode View
+
+        DB에 secret값이 설정되지 않거나 캐시로 불러오지 못함
+        """
         with patch('authentication.decorators.validate_jwt') as mock_validate_jwt, \
             patch('authentication.auth.cache.aget') as mock_cache_aget, \
             patch('authentication.auth.token_required') as mock_token_required:
@@ -153,6 +183,8 @@ class QRcodeViewTestCase(TestCase):
 
 
 class OTPViewTest(TestCase):
+    """Unit tests for OTP View class"""
+
     def setUp(self):
         self.factory = RequestFactory()
         self.view = OTPView()
@@ -182,6 +214,10 @@ class OTPViewTest(TestCase):
         patch.stopall()
 
     async def test_success(self):
+        """Test OTP View
+
+        OTP패스워가 일치함
+        """
         self.mock_validate_jwt.return_value = {'access_token': self.access_token}, False
         self.mock_token_required.return_value = lambda f: f
         self.mock_cache_aget.return_value = self.user_data
@@ -204,6 +240,10 @@ class OTPViewTest(TestCase):
         self.mock_update_otp_success.assert_called_once()
 
     async def test_incorrect_otp(self):
+        """Test OTP View
+
+        OTP패스워가 일치하지 않음
+        """
         self.mock_validate_jwt.return_value = {'access_token': self.access_token}, False
         self.mock_token_required.return_value = lambda f: f
         self.mock_cache_aget.return_value = self.user_data
@@ -228,6 +268,10 @@ class OTPViewTest(TestCase):
         self.mock_update_otp_data.assert_called_once()
 
     async def test_account_locked(self):
+        """Test OTP View
+
+        계정이 잠금되어 실패한 경우
+        """
         self.mock_validate_jwt.return_value = {'access_token': self.access_token}, False
         self.mock_token_required.return_value = lambda f: f
         self.mock_cache_aget.return_value = self.user_data
@@ -248,6 +292,10 @@ class OTPViewTest(TestCase):
         self.assertEqual(json.loads(response.content), {"error": "Account is locked. try later"})
 
     async def test_account_unlock(self):
+        """Test OTP View
+
+        계정 잠금 시간이 경과한 후 시도했을 경우
+        """
         self.mock_validate_jwt.return_value = {'access_token': self.access_token}, False
         self.mock_token_required.return_value = lambda f: f
         self.mock_cache_aget.return_value = self.user_data
@@ -269,6 +317,10 @@ class OTPViewTest(TestCase):
         self.assertEqual(json.loads(response.content), {'success': 'OTP authentication verified'})
 
     async def test_otp_data_not_found(self):
+        """Test OTP View
+
+        계정이 잠금되어 실패한 경우
+        """
         self.mock_validate_jwt.return_value = {'access_token': self.access_token}, False
         self.mock_token_required.return_value = lambda f: f
         self.mock_cache_aget.return_value = self.user_data
@@ -283,6 +335,10 @@ class OTPViewTest(TestCase):
         self.assertEqual(json.loads(response.content), {"error": "Can't found OTP data."})
 
     async def test_otp_attempts_count(self):
+        """Test OTP View
+
+        비밀번호 시도 횟수 체크 및 계정 잠금
+        """
         self.mock_validate_jwt.return_value = {'access_token': self.access_token}, False
         self.mock_token_required.return_value = lambda f: f
         self.mock_cache_aget.return_value = self.user_data
