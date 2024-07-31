@@ -1,10 +1,10 @@
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
+from django.core.cache import cache
+from authentication.decorators import token_required
 from .models import Game, Tournament
+from django.views import View
 import json
 import logging
-
 logger = logging.getLogger(__name__)
 
 def validate_game(data, mode):
@@ -17,20 +17,21 @@ def validate_game(data, mode):
         errors['mode'] = f"Game mode must be '{mode}'"
     return errors
 
-@csrf_exempt
-@require_http_methods(["GET", "POST"])
-def game(request):
-    if request.method == 'GET':
+class GameView(View):
+
+    @token_required
+    def get(self, request, access_token):
+        user = cache.get(f'user_data_{access_token}')
         page_number = int(request.GET.get('page', 1))
         page_size = int(request.GET.get('size', 10))  # 기본 페이지 크기는 10
 
         # 전체 게임 수 계산
-        total_games = Game.objects.count()
+        total_games = Game.objects.filter(user_id=user['id']).count()
 
         # 페이지에 해당하는 게임만 가져오기
         start = (page_number - 1) * page_size
         end = start + page_size
-        games = Game.objects.order_by('-created_at')[start:end]
+        games = Game.objects.filter(user_id=user['id']).order_by('-created_at')[start:end]
 
         response_data = []
         for game in games:
@@ -45,7 +46,7 @@ def game(request):
             }
             response_data.append(game_data)
 
-       # 페이지 정보 계산
+    # 페이지 정보 계산
         total_pages = (total_games + page_size - 1) // page_size
         has_next = page_number < total_pages
         has_previous = page_number > 1
@@ -61,10 +62,13 @@ def game(request):
             }
         }, safe=False)
 
-    elif request.method == 'POST':
+    @token_required
+    def post(self, request, access_token):
+        user = cache.get(f'user_data_{access_token}')
         try:
             data = json.loads(request.body)
             game = Game.objects.create(
+                user_id = user['id'],
                 player1=data['player1'],
                 player2=data['player2'],
                 score=data['score'],
@@ -78,48 +82,11 @@ def game(request):
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
 
-@csrf_exempt
-@require_http_methods(["GET", "POST"])
-def tournament(request):
-    # tournament GET은 없지만 최소한으로만 구현
-    # if request.method == 'GET':
-    #     page_number = request.GET.get('page', 1)
-    #     page_size = 10  # 한 페이지당 보여줄 토너먼트 수
+class TournamentView(View):
 
-    #     tournaments = Tournament.objects.all().order_by('id')
-    #     paginator = Paginator(tournaments, page_size)
-    #     page_obj = paginator.get_page(page_number)
-
-    #     response_data = []
-    #     for tournament in page_obj:
-    #         tournament_data = {}
-    #         for i in range(1, 4):
-    #             game = getattr(tournament, f'game{i}')
-    #             if game:
-    #                 tournament_data[f'game{i}'] = {
-							# 'id': game.id,
-							# 'player1': game.player1,
-							# 'player2': game.player2,
-							# 'score': game.score,
-							# 'mode': game.mode,
-							# 'tournament_id': game.tournament_id,
-							# 'created_at': game.created_at
-    #                 }
-    #         response_data.append(tournament_data)
-
-    #     return JsonResponse({
-    #         "tournaments": response_data,
-    #         "page": {
-    #             "current": page_obj.number,
-    #             "has_next": page_obj.has_next(),
-    #             "has_previous": page_obj.has_previous(),
-    #             "total_pages": paginator.num_pages,
-    #             "total_items": paginator.count,
-    #         }
-    #     }, safe=False)
-
-	# elif request.method == 'POST':
-    if request.method == 'POST':
+    @token_required
+    def post(self, request, access_token):
+        user = cache.get(f'user_data_{access_token}')
         try:
             data = json.loads(request.body)
             tournament_errors = {}
@@ -135,11 +102,11 @@ def tournament(request):
             if tournament_errors:
                 return JsonResponse({"errors": tournament_errors}, status=400)
 
-            tournament = Tournament.objects.create()
+            tournament = Tournament.objects.create(user_id=user['id'])
             for i in range(1, 4):
                 game_key = f'game{i}'
                 game_data = data[game_key]
-                game = Game.objects.create(tournament=tournament, **game_data)
+                game = Game.objects.create(user_id=user['id'], tournament_id=tournament.id, **game_data)
                 setattr(tournament, game_key, game)
             tournament.save()
             return JsonResponse({"status": "Tournament created successfully", "id": tournament.id}, status=201)
