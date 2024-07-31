@@ -26,7 +26,7 @@ jobs:
 
       - name: Run tests
         run: |
-          python manage.py test
+          python pong/manage.py test
     
       - name: connect ec2 instance
         uses: appleboy/ssh-action@v0.1.9
