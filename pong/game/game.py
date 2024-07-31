@@ -1,8 +1,5 @@
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
 from django.core.cache import cache
-from authentication import auth
 from authentication.decorators import token_required
 from .models import Game, Tournament
 from django.views import View
@@ -118,46 +115,3 @@ class TournamentView(View):
         except Exception as e:
                 logger.error(f'error: {str(e)}')
                 return JsonResponse({"error": str(e)}, status=400)
-
-        # GET method for tournament is not implemented
-        # return JsonResponse({"error": "Method not allowed"}, status=405)
-
-    # tournament GET은 없지만 최소한으로만 구현
-    # if request.method == 'GET':
-    #     page_number = request.GET.get('page', 1)
-    #     page_size = 10  # 한 페이지당 보여줄 토너먼트 수
-
-    #     tournaments = Tournament.objects.all().order_by('id')
-    #     paginator = Paginator(tournaments, page_size)
-    #     page_obj = paginator.get_page(page_number)
-
-    #     response_data = []
-    #     for tournament in page_obj:
-    #         tournament_data = {}
-    #         for i in range(1, 4):
-    #             game = getattr(tournament, f'game{i}')
-    #             if game:
-    #                 tournament_data[f'game{i}'] = {
-                            # 'id': game.id,
-                            # 'player1': game.player1,
-                            # 'player2': game.player2,
-                            # 'score': game.score,
-                            # 'mode': game.mode,
-                            # 'tournament_id': game.tournament_id,
-                            # 'created_at': game.created_at
-    #                 }
-    #         response_data.append(tournament_data)
-
-    #     return JsonResponse({
-    #         "tournaments": response_data,
-    #         "page": {
-    #             "current": page_obj.number,
-    #             "has_next": page_obj.has_next(),
-    #             "has_previous": page_obj.has_previous(),
-    #             "total_pages": paginator.num_pages,
-    #             "total_items": paginator.count,
-    #         }
-    #     }, safe=False)
-
-    # elif request.method == 'POST':
- 
