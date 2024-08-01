@@ -2,9 +2,11 @@ from django.test import TestCase, AsyncClient, RequestFactory
 from django.urls import reverse
 from django.utils import timezone
 from datetime import timedelta
-from authentication.auth import OTPView, MAX_ATTEMPTS, LOCK_ACCOUNT
+from authentication.models import OTPSecret, User
+from authentication.auth import OAuthView, OTPView, MAX_ATTEMPTS, LOCK_ACCOUNT, JWT_SECRET
 from unittest.mock import patch, MagicMock
 import json
+import jwt
 
 
 class UserInfoTestCase(TestCase):
@@ -361,3 +363,95 @@ class OTPViewTest(TestCase):
             else:
                 self.assertEqual(response.status_code, 403)
                 self.assertEqual(json.loads(response.content)["error"], "Maximum number of attempts exceeded. Please try again after 15 minutes.")
+
+
+class OAuthViewTest(TestCase):
+    """Unit tests for OAuth View class"""
+
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.view = OAuthView()
+        self.url = reverse('token')
+
+        self.user_id = 1
+        self.access_token = "access_token"
+        self.encoded_jwt = jwt.encode({"access_token": self.access_token}, JWT_SECRET, algorithm='HS256')
+        self.otp_secret = "ABCDEFGHIJKLMNOP"
+        self.user_data = {
+            'id': 1,
+            'email': 'test@example.com',
+            'login': 'testuser',
+            'usual_full_name': 'Test User',
+            'image_link': 'http://example.com/image.jpg'
+        }
+        self.user_obj = User(*self.user_data)
+        self.otp_obj = OTPSecret(user_id=1, secret="Fake", attempts=0, is_verified=False)
+
+        self.mock_exchange_code_for_token = patch('authentication.auth.OAuthView.exchange_code_for_token').start()
+        self.mock_get_user_info = patch('authentication.auth.OAuthView.get_user_info').start()
+
+    def tearDown(self):
+        patch.stopall()
+
+    async def test_get_success(self):
+        """Test OAuth View
+
+        get method, 성공 시 리다이렉션 URI 및 response cookie 확인
+        """
+        self.mock_exchange_code_for_token.return_value = self.access_token
+        self.mock_get_user_info.return_value = (True, {'user': 'data'})
+        
+        request = self.factory.get(self.url)
+        response = await self.view.get(request)
+        
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, "http://127.0.0.1:5500/main")
+        self.assertIn('jwt', response.cookies)
+
+    async def test_get_failure_no_access_token(self):
+        """Test OAuth View
+
+        get method, access_token이 없어서 실패한 경우
+        """
+        self.mock_exchange_code_for_token.return_value = None
+        
+        request = self.factory.get(self.url)
+        response = await self.view.get(request)
+        
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(json.loads(response.content)["error"], "Failed to obtain access token")
+    
+    @patch('authentication.auth.cache.aget')
+    @patch('authentication.decorators.validate_jwt')
+    @patch('authentication.auth.token_required')
+    async def test_delete(self, mock_token_required, mock_validate_jwt, mock_user_data):
+        """Test OAuth View
+
+        delete method 성공
+        """
+        mock_user_data.return_value = self.user_data
+        mock_validate_jwt.return_value = self.access_token, False
+        mock_token_required.return_value = lambda f: f
+        
+        request = self.factory.delete(self.url, self.access_token)
+        response = await self.view.delete(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(json.loads(response.content)["message"], "logout success")
+
+    async def test_post_success(self):
+        """Test OAuth View
+
+        post method의 경우 code를 받아서 token으로 교환하는 과정 확인
+        반환하는 json값들 확인
+        """
+        self.mock_exchange_code_for_token.return_value = self.access_token
+        self.mock_get_user_info.return_value = (True, {'user': self.user_obj, 'otp': self.otp_obj})
+
+        request = self.factory.post(self.url, data='{"code":"fake_code"}', content_type='application/json')
+        response = await self.view.post(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(json.loads(response.content)["jwt"], self.encoded_jwt)
+        self.assertEqual(json.loads(response.content)["otp_verified"], False)
+        self.assertEqual(json.loads(response.content)["show_otp_qr"], False)
