@@ -34,7 +34,8 @@ jobs:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           STATE: ${{ secrets.STATE }}
         run: |
-          python pong/manage.py test --settings=pong.settings.test
+          cd pong
+          python manage.py test --settings=pong.settings.test
     
       - name: connect ec2 instance
         uses: appleboy/ssh-action@v0.1.9
