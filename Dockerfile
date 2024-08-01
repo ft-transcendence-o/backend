@@ -15,6 +15,7 @@ python manage.py makemigrations authentication\n\
 python manage.py makemigrations game\n\
 python manage.py migrate\n\
 python manage.py collectstatic --noinput\n\
+DJANGO_SETTINGS_MODULE=pong.settings.prod\n\
 gunicorn --bind 0.0.0.0:8000 --workers 3 --worker-class uvicorn.workers.UvicornWorker pong.asgi:application' > start.sh
 
 RUN chmod +x start.sh
