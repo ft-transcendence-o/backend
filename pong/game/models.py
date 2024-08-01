@@ -8,9 +8,10 @@ GAME_MODES = [
 
 class Game(models.Model):
     user = models.ForeignKey(User,on_delete=models.CASCADE, null=False)
-    player1 = models.CharField(max_length=10)
-    player2 = models.CharField(max_length=10)
-    score = models.CharField(max_length=10)
+    player1_nick = models.CharField(max_length=10)
+    player2_nick = models.CharField(max_length=10)
+    player1_score = models.IntegerField()
+    player2_score = models.IntegerField()
     mode = models.CharField(max_length=10, choices=GAME_MODES)
     tournament = models.ForeignKey('Tournament', on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)

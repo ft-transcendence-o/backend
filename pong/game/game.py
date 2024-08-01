@@ -69,9 +69,10 @@ class GameView(View):
             data = json.loads(request.body)
             game = Game.objects.create(
                 user_id = user['id'],
-                player1=data['player1'],
-                player2=data['player2'],
-                score=data['score'],
+                player1_nick=data['player1Nick'],
+                player2_nick=data['player2Nick'],
+                player1_score=data['player1Score'],
+                player2_score=data['player2Score'],
                 mode=data['mode']
             )
             return JsonResponse({"status": "Game created successfully", "id": game.id}, status=201)
@@ -106,7 +107,14 @@ class TournamentView(View):
             for i in range(1, 4):
                 game_key = f'game{i}'
                 game_data = data[game_key]
-                game = Game.objects.create(user_id=user['id'], tournament_id=tournament.id, **game_data)
+                game = Game.objects.create(
+                    user_id=user['id'],
+                    tournament_id=tournament.id,
+                    player1_nick=game_data['player1Nick'],
+                    player2_nick=game_data['player2Nick'],
+                    player1_score=game_data['player1Score'],
+                    player2_score=game_data['player2Score'],
+                    mode=game_data['mode'])
                 setattr(tournament, game_key, game)
             tournament.save()
             return JsonResponse({"status": "Tournament created successfully", "id": tournament.id}, status=201)
