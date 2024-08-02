@@ -49,6 +49,7 @@ INTRA_SECRET_KEY = getenv("INTRA_SECRET_KEY")
 REDIRECT_URI = getenv("REDIRECT_URI")
 STATE = getenv("STATE")
 AUTH_PAGE = getenv("AUTH_PAGE")
+FRONT_BASE_URL = getenv("FRONT_BASE_URL")
 
 
 class UserInfo(View):
@@ -89,8 +90,15 @@ class OAuthView(View):
         if not success:
             return JsonResponse({"error": user_info}, status=500)
         encoded_jwt = jwt.encode({"access_token": access_token}, JWT_SECRET, algorithm="HS256")
-        response = HttpResponseRedirect("http://127.0.0.1:5500/main")
-        response.set_cookie("jwt", encoded_jwt)
+        redirect_url = await self.get_redirect_url(access_token, user_info['otp'].is_verified)
+        response = HttpResponseRedirect(redirect_url)
+        response.set_cookie(
+                "jwt",
+                encoded_jwt,
+                httponly=True,
+                secure=True,
+                samesite='Lax'
+            )
         return response
 
     @token_required
@@ -124,6 +132,15 @@ class OAuthView(View):
         if not success:
             return JsonResponse({"error": user_info}, status=500)
         return await self.prepare_response(access_token, user_info)
+
+    async def get_redirect_url(self, access_token, is_verified):
+        if await cache.aget(f'otp_passed_{access_token}', False) == False:
+            if is_verified == False:
+                return FRONT_BASE_URL + "/QRcode"
+            else:
+                return FRONT_BASE_URL + "/OTP"
+        else:
+            return FRONT_BASE_URL + "/main"
 
     def extract_code(self, request):
         body = json.loads(request.body.decode('utf-8'))

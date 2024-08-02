@@ -10,7 +10,7 @@ def validate_jwt(request):
     """
     JWT 검증 및 액세스 토큰 추출 함수
     """
-    encoded_jwt = request.headers.get("Authorization")
+    encoded_jwt = request.COOKIES.get("jwt")
     if not encoded_jwt:
         return None, JsonResponse({"error": "No jwt in request"}, status=401)
     if encoded_jwt.startswith("Bearer "):
