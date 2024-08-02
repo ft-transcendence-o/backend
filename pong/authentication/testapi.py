@@ -3,14 +3,14 @@ from django.urls import reverse
 from django.utils import timezone
 from datetime import timedelta
 from authentication.models import OTPSecret, User
-from authentication.auth import OAuthView, OTPView, MAX_ATTEMPTS, LOCK_ACCOUNT, JWT_SECRET
+from authentication.auth import OAuthView, OTPView, MAX_ATTEMPTS, LOCK_ACCOUNT, JWT_SECRET, FRONT_BASE_URL
 from unittest.mock import patch, MagicMock
 import json
 import jwt
 
 
 class UserInfoTestCase(TestCase):
-    """Unit tests for UserInfo View class"""
+    """Integration tests for UserInfo View class"""
 
     def setUp(self):
         self.client = AsyncClient()
@@ -102,7 +102,7 @@ class UserInfoTestCase(TestCase):
 
 
 class QRcodeViewTestCase(TestCase):
-    """Unit tests for QRcode View class"""
+    """Integration tests for QRcode View class"""
 
     def setUp(self):
         self.client = AsyncClient()
@@ -185,7 +185,7 @@ class QRcodeViewTestCase(TestCase):
 
 
 class OTPViewTest(TestCase):
-    """Unit tests for OTP View class"""
+    """Integration tests for OTP View class"""
 
     def setUp(self):
         self.factory = RequestFactory()
@@ -366,7 +366,7 @@ class OTPViewTest(TestCase):
 
 
 class OAuthViewTest(TestCase):
-    """Unit tests for OAuth View class"""
+    """Integration tests for OAuth View class"""
 
     def setUp(self):
         self.factory = RequestFactory()
