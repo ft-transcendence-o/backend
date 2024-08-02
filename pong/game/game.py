@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 def validate_game(data, mode):
     errors = {}
-    required_fields = ['player1Nick', 'player2Nick', 'player1Score', 'player2Score' 'mode']
+    required_fields = ['player1Nick', 'player2Nick', 'player1Score', 'player2Score', 'mode']
     for field in required_fields:
         if field not in data:
             errors[field] = f"{field} is required."
