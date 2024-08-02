@@ -40,7 +40,7 @@ backend 인증 로직
 7. OTP 입력 및 검증
 """
 TOKEN_EXPIRES= 7200
-LOCK_ACCOUNT = 900
+LOCK_ACCOUNT = 9
 MAX_ATTEMPTS = 5
 API_URL = getenv("API_URL")
 JWT_SECRET = getenv("JWT_SECRET")
