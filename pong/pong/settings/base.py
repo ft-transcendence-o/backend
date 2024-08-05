@@ -32,6 +32,8 @@ SECRET_KEY = ''.join([random.SystemRandom().choice(chars) for i in range(50)])
 
 
 INSTALLED_APPS = [
+    # "Make sure "daphne" is at the top
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -74,6 +76,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'pong.wsgi.application'
+ASGI_APPLICATION = "pong.asgi.application"
 
 
 # Password validation
