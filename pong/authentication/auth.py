@@ -111,7 +111,7 @@ class OAuthView(View):
         """
         cache.delete(f'user_data_{access_token}')
         cache.delete(f'otp_passed_{access_token}')
-        response = HttpResponseRedirect(FRONT_BASE_URL)
+        response = JsonResponse({"message": "logout success"})
         response.delete_cookie('jwt')
         return response
 
