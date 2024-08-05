@@ -1,7 +1,7 @@
 from django.test import TestCase, RequestFactory
 from django.http import JsonResponse
 from django.utils import timezone
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 import json
 from authentication.decorators import token_required
 from authentication.models import OTPSecret, User

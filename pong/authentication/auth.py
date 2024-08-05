@@ -105,12 +105,15 @@ class OAuthView(View):
     async def delete(self, request, access_token):
         """
         cache에 저장된 유저 정보 및 OTP패스 정보 폐기
+        cookie JWT 폐기 및 홈 화면으로 리다이렉션
 
         :header Authorization: 인증을 위한 JWT
         """
         cache.delete(f'user_data_{access_token}')
         cache.delete(f'otp_passed_{access_token}')
-        return JsonResponse({"message": "logout success"}, status=200)
+        response = HttpResponseRedirect(FRONT_BASE_URL)
+        response.delete_cookie('jwt')
+        return response
 
     async def post(self, request):
         """
