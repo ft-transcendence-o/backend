@@ -4,7 +4,7 @@ import numpy as np
 import asyncio
 import math
 
-from channels.generic.websocket import WebsocketConsumer
+from channels.generic.websocket import AsyncWebsocketConsumer
 
 #TODO classify paddle and ball
 class Paddle:
@@ -13,15 +13,15 @@ class Paddle:
         self.plane = (np.array(plane), 50)
 
 
-class GameConsumer(WebsocketConsumer):
-    def connect(self):
+class GameConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
         await self.accept()
         self.key_input = None
 
-    def disconnect(self, close_code):
+    async def disconnect(self, close_code):
         pass
 
-    def receive(self, text_data):
+    async def receive(self, text_data):
         text_data_json = json.loads(text_data)
         event = text_data_json["event"]
 
@@ -31,6 +31,17 @@ class GameConsumer(WebsocketConsumer):
         elif event == "key_input":
             self.key_input = text_data_json.get("key_input")
 
+    async def game_loop(self):
+        while True:
+
+            if self.key_input:
+                # 키 입력 처리
+                self.process_key_input(self.key_input)
+                self.key_input = None 
+
+            result = self.update()
+            await self.send(text_data=json.dumps({"game": result}))
+            await asyncio.sleep(0.033)
 
     def start_game(self):
         self.game_loop()
@@ -55,18 +66,6 @@ class GameConsumer(WebsocketConsumer):
         elif key == "ArrowRight":
             pass
 
-
-    def game_loop(self):
-        while True:
-
-            if self.key_input:
-                # 키 입력 처리
-                self.process_key_input(self.key_input)
-                self.key_input = None 
-
-            result = self.update()
-            self.send(text_data=json.dumps({"game": result}))
-
     def init_game(self):
         self.ball_pos = np.array([0.0, 0.0, 0.0]) #공위치  #@
         self.ball_vec = np.array([0.0, 1.0, 2.0]) #공이 움직이는 방향
@@ -87,7 +86,7 @@ class GameConsumer(WebsocketConsumer):
         # self.panel1 = Paddle([0.0, 0.0, 50.0], [0, 0, -1])
         # self.panel2 = Paddle([0.0, 0.0, -50.0], [0, 0, 1])
 
-    def update(self):
+    async def update(self):
         # user가 입력한 키값 소켓으로 받기
         steps = 10
         for i in range(steps):
