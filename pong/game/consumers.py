@@ -6,6 +6,13 @@ import math
 
 from channels.generic.websocket import WebsocketConsumer
 
+#TODO classify paddle and ball
+class Paddle:
+    def __init__(self, pos, plane):
+        self.pos = np.array(pos)
+        self.plane = (np.array(plane), 50)
+
+
 class GameConsumer(WebsocketConsumer):
     def connect(self):
         await self.accept()
@@ -77,6 +84,8 @@ class GameConsumer(WebsocketConsumer):
         self.panel1_plane = (np.array([0, 0, -1]), 50) #(법선벡터, 원점과의 거리)
         self.panel2_plane = (np.array([0, 0, 1]), 50) #(법선벡터, 원점과의 거리)
 
+        # self.panel1 = Paddle([0.0, 0.0, 50.0], [0, 0, -1])
+        # self.panel2 = Paddle([0.0, 0.0, -50.0], [0, 0, 1])
 
     def update(self):
         # user가 입력한 키값 소켓으로 받기
