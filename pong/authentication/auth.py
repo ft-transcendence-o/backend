@@ -38,7 +38,7 @@ backend 인증 로직
 2. "code"를 access_token으로 exchange한다.
 3. access_token을 사용하여 /v2/me 에서 정보를 받는다.
 4. email, secret 정보를 사용하여 2FA를 실행한다
-5. 첫번째 로그인의 경우 OTP에 필요한 secret을 생성하고 
+5. 첫번째 로그인의 경우 OTP에 필요한 secret을 생성하고
     URI로 QR code를 그린다
 6. QR code를 사용해 google authenticator 등록
 7. OTP 입력 및 검증
@@ -266,7 +266,7 @@ class QRcodeView(View):
             return JsonResponse({"otpauth_uri": uri}, status=200)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
- 
+
     # It check user data twice but still need
     async def get_user_data(self, access_token):
         user_data = await cache.aget(f'user_data_{access_token}')
@@ -321,7 +321,6 @@ class OTPView(View):
 
         if self.verify_otp(request, otp_data['secret']):
             await self.update_otp_success(otp_data, access_token, user_data)
-            logger.error(f"Verify OTP")
             return JsonResponse({"success": "OTP authentication verified"}, status=200)
 
         await self.update_otp_data(user_id, otp_data)
@@ -371,8 +370,14 @@ class OTPView(View):
         otp_data['is_locked'] = False
         otp_data['is_verified'] = True
         cache.set(f'otp_passed_{access_token}', user_data, timeout=TOKEN_EXPIRES)
-        logger.error(f"Updating OTP data for user {user_data['id']}: {otp_data}")
-        return self.update_otp_data(user_data['id'], otp_data)
+        # return self.update_otp_data(user_data['id'], otp_data)
+        logger.info(f"Updating OTP data for user {user_data['id']}: {otp_data}")
+        return OTPSecret.objects.filter(user_id=user_data['id']).update(
+            attempts=otp_data['attempts'],
+            last_attempt=otp_data['last_attempt'],
+            is_locked=otp_data['is_locked'],
+            is_verified=otp_data['is_verified']
+        )
 
     @sync_to_async
     def update_otp_data(self, user_id, data):
@@ -380,7 +385,7 @@ class OTPView(View):
         OTP 시도 횟수 및 시간 저장
         5회 이상 시도 시 계정 잠금 및 초기화 시간 900초 소요
         """
-        logger.error(f"OTP data update result for user {user_id}: {data}")
+        logger.info(f"OTP data update result for user {user_id}: {data}")
         return OTPSecret.objects.filter(user_id=user_id).update(
             attempts=data['attempts'],
             last_attempt=data['last_attempt'],
@@ -392,7 +397,7 @@ class OTPView(View):
 class Login(View):
     async def get(self, request):
         return HttpResponseRedirect(AUTH_PAGE)
-    
+
 
 class Test(View):
     @login_required
