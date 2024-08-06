@@ -16,7 +16,6 @@ DATABASES = {
 }
 
 LOG_DIR = path.join(BASE_DIR, 'logs')
-
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -33,8 +32,18 @@ LOGGING = {
             'filename': path.join(LOG_DIR, 'debug.log'),
             'formatter': 'verbose',
         },
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
     },
     'loggers': {
+        '': {  # 루트 로거
+            'handlers': ['file', 'console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
         'django': {
             'handlers': ['file'],
             'level': 'DEBUG',
