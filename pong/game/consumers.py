@@ -9,9 +9,19 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 #TODO classify paddle and ball
 class Paddle:
     def __init__(self, pos, plane):
-        self.pos = np.array(pos)
+        self.positon = np.array(pos)
         self.plane = (np.array(plane), 50)
 
+class Ball:
+    def __init__(self):
+        self.position = np.array([0.0, 0.0, 0.0]) #공위치  #@
+        self.vector = np.array([0.0, 1.0, 2.0]) #공이 움직이는 방향
+        self.rotation = np.array([0.0, 0.0, 0.0]) #공의 회전벡터
+        self.angular_vector = np.array([0.0, 0.0, 0.0])
+
+class Cube:
+    def __init__(self):
+        self.planes = [(np.array([1, 0, 0]), 10), (np.array([-1, 0, 0]), 10), (np.array([0, 1, 0]), 10), (np.array([0, -1, 0]), 10)]
 
 class GameConsumer(AsyncWebsocketConsumer):
     async def connect(self):
