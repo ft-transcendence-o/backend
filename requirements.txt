@@ -23,6 +23,7 @@ django-cors-headers==4.4.0
 cryptography==42.0.8
 hyperlink==21.0.0
 incremental==24.7.2 
+numpy==2.0.1
 pyasn1==0.6.0 
 pyasn1-modules==0.4.0 
 pyopenssl==24.2.1 
