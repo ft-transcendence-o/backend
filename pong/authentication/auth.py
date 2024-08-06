@@ -301,6 +301,7 @@ class OTPView(View):
         :header Authorization: 인증을 위한 JWT
         :body input_password: 사용자가 입력한 OTP
         """
+        logger.error(f"In post")
         user_data = await cache.aget(f"user_data_{access_token}")
         user_id = user_data.get('id')
         otp_data = await self.get_otp_data(user_id)
@@ -320,6 +321,7 @@ class OTPView(View):
 
         if self.verify_otp(request, otp_data['secret']):
             await self.update_otp_success(otp_data, access_token, user_data)
+            logger.error(f"Verify OTP")
             return JsonResponse({"success": "OTP authentication verified"}, status=200)
 
         await self.update_otp_data(user_id, otp_data)
@@ -369,7 +371,7 @@ class OTPView(View):
         otp_data['is_locked'] = False
         otp_data['is_verified'] = True
         cache.set(f'otp_passed_{access_token}', user_data, timeout=TOKEN_EXPIRES)
-        logger.info(f"Updating OTP data for user {user_data['id']}: {otp_data}")
+        logger.error(f"Updating OTP data for user {user_data['id']}: {otp_data}")
         return self.update_otp_data(user_data['id'], otp_data)
 
     @sync_to_async
@@ -378,7 +380,7 @@ class OTPView(View):
         OTP 시도 횟수 및 시간 저장
         5회 이상 시도 시 계정 잠금 및 초기화 시간 900초 소요
         """
-        logger.info(f"OTP data update result for user {user_id}: {data}")
+        logger.error(f"OTP data update result for user {user_id}: {data}")
         return OTPSecret.objects.filter(user_id=user_id).update(
             attempts=data['attempts'],
             last_attempt=data['last_attempt'],
