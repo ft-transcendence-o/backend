@@ -378,7 +378,7 @@ class OTPView(View):
         OTP 시도 횟수 및 시간 저장
         5회 이상 시도 시 계정 잠금 및 초기화 시간 900초 소요
         """
-        logger.info(f"OTP data update result for user {user_id}: {result}")
+        logger.info(f"OTP data update result for user {user_id}: {data}")
         return OTPSecret.objects.filter(user_id=user_id).update(
             attempts=data['attempts'],
             last_attempt=data['last_attempt'],
