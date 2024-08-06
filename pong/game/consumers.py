@@ -26,15 +26,19 @@ class Cube:
 class GameConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         await self.accept()
+        self.game_task = None
         self.key_input = None
 
     async def disconnect(self, close_code):
-        pass
+        if self.game_task:
+            self.game_task.cancel()
+        #TODO db 작업 및 세션 정리
+        # await self.save_game_state()
+        # await self.cleanup_resources()
 
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
         event = text_data_json["event"]
-
         if event == "start":
             self.init_game()
             self.start_game()
@@ -42,20 +46,21 @@ class GameConsumer(AsyncWebsocketConsumer):
             self.key_input = text_data_json.get("key_input")
 
     async def game_loop(self):
-        while True:
+        try:
+            while True:
+                if self.key_input:
+                    # 키 입력 처리
+                    self.process_key_input(self.key_input)
+                    self.key_input = None
 
-            if self.key_input:
-                # 키 입력 처리
-                self.process_key_input(self.key_input)
-                self.key_input = None 
-
-            result = self.update()
-            await self.send(text_data=json.dumps({"game": result}))
-            await asyncio.sleep(0.033)
+                result = self.update()
+                await self.send(text_data=json.dumps({"game": result}))
+                await asyncio.sleep(0.033)
+        except asyncio.CancelledError:
+            pass
 
     def start_game(self):
-        self.game_loop()
-        # asyncio.create_task(self.game_loop())
+        self.game_task = asyncio.create_task(self.game_loop())
 
     def process_key_input(self, key):
         """input key에 따른 처리 로직"""
