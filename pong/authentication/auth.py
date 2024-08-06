@@ -9,9 +9,13 @@ import aiohttp
 import pyotp
 import jwt
 import json
+import logging
 
 from authentication.decorators import token_required, login_required
 from authentication.models import User, OTPSecret
+
+
+logger = logging.getLogger(__name__)
 
 """
 42 OAuth2의 흐름
@@ -365,7 +369,8 @@ class OTPView(View):
         otp_data['is_locked'] = False
         otp_data['is_verified'] = True
         cache.set(f'otp_passed_{access_token}', user_data, timeout=TOKEN_EXPIRES)
-        self.update_otp_data(user_data['id'], otp_data)
+        logger.info(f"Updating OTP data for user {user_data['id']}: {otp_data}")
+        return self.update_otp_data(user_data['id'], otp_data)
 
     @sync_to_async
     def update_otp_data(self, user_id, data):
@@ -373,7 +378,8 @@ class OTPView(View):
         OTP 시도 횟수 및 시간 저장
         5회 이상 시도 시 계정 잠금 및 초기화 시간 900초 소요
         """
-        OTPSecret.objects.filter(user_id=user_id).update(
+        logger.info(f"OTP data update result for user {user_id}: {result}")
+        return OTPSecret.objects.filter(user_id=user_id).update(
             attempts=data['attempts'],
             last_attempt=data['last_attempt'],
             is_locked=data['is_locked'],
