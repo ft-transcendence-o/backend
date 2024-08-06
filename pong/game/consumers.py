@@ -49,6 +49,3 @@ class PongGame:
             self.ball_rot[2] += self.angular_vec[2]
 
             collisionPlane = self.collisionWithSide()
-
-
-    def collisionWithSide(self):
