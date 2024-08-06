@@ -8,26 +8,55 @@ from channels.generic.websocket import WebsocketConsumer
 
 class GameConsumer(WebsocketConsumer):
     def connect(self):
-        self.accept()
+        await self.accept()
+        self.key_input = None
 
     def disconnect(self, close_code):
         pass
 
     def receive(self, text_data):
         text_data_json = json.loads(text_data)
-        message = text_data_json["event"]
-        print(message)
-        if message == "start":
+        event = text_data_json["event"]
+
+        if event == "start":
             self.init_game()
             self.start_game()
-            self.send(text_data=json.dumps({"game": result}))
+        elif event == "key_input":
+            self.key_input = text_data_json.get("key_input")
+
 
     def start_game(self):
         self.game_loop()
         # asyncio.create_task(self.game_loop())
 
+    def process_key_input(self, key):
+        """input key에 따른 처리 로직"""
+        if key == "W":
+            pass
+        elif key == "A":
+            pass
+        elif key == "S":
+            pass
+        elif key == "D":
+            pass
+        elif key == "ArrowUp":
+            pass
+        elif key == "ArrowDown":
+            pass
+        elif key == "ArrowLeft":
+            pass
+        elif key == "ArrowRight":
+            pass
+
+
     def game_loop(self):
         while True:
+
+            if self.key_input:
+                # 키 입력 처리
+                self.process_key_input(self.key_input)
+                self.key_input = None 
+
             result = self.update()
             self.send(text_data=json.dumps({"game": result}))
 
