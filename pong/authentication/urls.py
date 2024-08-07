@@ -8,4 +8,5 @@ urlpatterns = [
     path('otp/qrcode', auth.QRcodeView.as_view(), name='otp_qrcode'),
     path('otp/verify', auth.OTPView.as_view(), name='otp_verify'),
     path('login', auth.Login.as_view(), name='login'),
+    path('test', auth.Test.as_view(), name='test'),
 ]
