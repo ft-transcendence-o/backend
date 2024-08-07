@@ -72,13 +72,13 @@ class GameConsumer(AsyncWebsocketConsumer):
             pass
         elif key == "D":
             pass
-        elif key == "ArrowUp":
+        elif key == "Up":
             pass
-        elif key == "ArrowDown":
+        elif key == "Down":
             pass
-        elif key == "ArrowLeft":
+        elif key == "Left":
             pass
-        elif key == "ArrowRight":
+        elif key == "Right":
             pass
 
     def init_game(self):
