@@ -2,7 +2,7 @@ from django.db import models
 from authentication.models import User
 
 GAME_MODES = [
-    ('1VS1', '1vs1'),
+    ('1ON1', '1on1'),
     ('TOURNAMENT', 'Tournament')
 ]
 
