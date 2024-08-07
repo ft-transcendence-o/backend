@@ -101,7 +101,7 @@ class GameConsumer(AsyncWebsocketConsumer):
         # self.panel1 = Paddle([0.0, 0.0, 50.0], [0, 0, -1])
         # self.panel2 = Paddle([0.0, 0.0, -50.0], [0, 0, 1])
 
-    async def update(self):
+    def update(self):
         # user가 입력한 키값 소켓으로 받기
         steps = 10
         for i in range(steps):
