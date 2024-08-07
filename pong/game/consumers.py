@@ -65,21 +65,21 @@ class GameConsumer(AsyncWebsocketConsumer):
     def process_key_input(self, key):
         """input key에 따른 처리 로직"""
         if key == "W":
-            pass
+            self.panel1_pos[1] += 0.6
         elif key == "A":
-            pass
+            self.panel1_pos[0] -= 0.6
         elif key == "S":
-            pass
+            self.panel1_pos[1] -= 0.6
         elif key == "D":
-            pass
+            self.panel1_pos[0] += 0.6
         elif key == "Up":
-            pass
+            self.panel2_pos[1] += 0.6
         elif key == "Down":
-            pass
+            self.panel2_pos[1] -= 0.6
         elif key == "Left":
-            pass
+            self.panel2_pos[0] -= 0.6
         elif key == "Right":
-            pass
+            self.panel2_pos[0] += 0.6
 
     def init_game(self):
         self.ball_pos = np.array([0.0, 0.0, 0.0]) #공위치  #@
