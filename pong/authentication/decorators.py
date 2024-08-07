@@ -21,11 +21,11 @@ def validate_jwt(request):
     except:
         return None, JsonResponse({"error": "Decoding jwt failed"}, status=401)
 
-    access_token = decoded_jwt.get("access_token")
-    if not access_token:
+    user_id = decoded_jwt.get("user_id")
+    if not user_id:
         return None, JsonResponse({"error": "No access token provided"}, status=401)
 
-    return access_token, None
+    return user_id, None
 
 def auth_decorator_factory(check_otp=False):
     def decorator(func):
@@ -37,16 +37,16 @@ def auth_decorator_factory(check_otp=False):
             :param check_otp: OTP 통과 확인이 필요한지 나타내는 인자
             :header Authorization: access_token을 담은 JWT
             """
-            access_token, error_response = validate_jwt(request)
+            user_id, error_response = validate_jwt(request)
             if error_response:
                 return error_response
 
-            user_data = await cache.aget(f'user_data_{access_token}')
+            user_data = await cache.aget(f'user_data_{user_id}')
             if not user_data:
                 return JsonResponse({"error": "Invalid token"}, status=401)
 
             if check_otp:
-                otp_verified = await cache.aget(f'otp_passed_{access_token}')
+                otp_verified = await cache.aget(f'otp_passed_{user_id}')
                 show_otp_qr = user_data.get('is_verified')
                 if not otp_verified:
                     return JsonResponse({
@@ -55,7 +55,7 @@ def auth_decorator_factory(check_otp=False):
                         "show_otp_qr": show_otp_qr
                     }, status=403)
 
-            return await func(self, request, access_token, *args, **kwargs)
+            return await func(self, request, user_id, *args, **kwargs)
         return wrapper
     return decorator
 

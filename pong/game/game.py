@@ -21,17 +21,16 @@ def validate_game(data, mode):
 
 class GameView(View):
     @login_required
-    async def get(self, request, access_token):
-        user = await cache.aget(f'user_data_{access_token}')
+    async def get(self, request, user_id):
         page_number = int(request.GET.get('page', 1))
         page_size = int(request.GET.get('size', 10))
 
-        count_games = sync_to_async(Game.objects.filter(user_id=user['id']).count)
+        count_games = sync_to_async(Game.objects.filter(user_id=user_id).count)
         total_games = await count_games()
 
         start = (page_number - 1) * page_size
         end = start + page_size
-        games = await sync_to_async(list)(Game.objects.filter(user_id=user['id']).order_by('-created_at')[start:end])
+        games = await sync_to_async(list)(Game.objects.filter(user_id=user_id).order_by('-created_at')[start:end])
 
         response_data = []
         for game in games:
@@ -63,12 +62,11 @@ class GameView(View):
         }, safe=False)
 
     @login_required
-    async def post(self, request, access_token):
-        user = await cache.aget(f'user_data_{access_token}')
+    async def post(self, request, user_id):
         try:
             data = json.loads(request.body)
             game = await sync_to_async(Game.objects.create)(
-                user_id=user['id'],
+                user_id=user_id,
                 player1_nick=data['player1Nick'],
                 player2_nick=data['player2Nick'],
                 player1_score=data['player1Score'],
@@ -85,8 +83,7 @@ class GameView(View):
 
 class TournamentView(View):
     @login_required
-    async def post(self, request, access_token):
-        user = await cache.aget(f'user_data_{access_token}')
+    async def post(self, request, user_id):
         try:
             data = json.loads(request.body)
             tournament_errors = {}
@@ -102,12 +99,12 @@ class TournamentView(View):
             if tournament_errors:
                 return JsonResponse({"errors": tournament_errors}, status=400)
 
-            tournament = await sync_to_async(Tournament.objects.create)(user_id=user['id'])
+            tournament = await sync_to_async(Tournament.objects.create)(user_id=user_id)
             for i in range(1, 4):
                 game_key = f'game{i}'
                 game_data = data[game_key]
                 game = await sync_to_async(Game.objects.create)(
-                    user_id=user['id'],
+                    user_id=user_id,
                     tournament_id=tournament.id,
                     player1_nick=game_data['player1Nick'],
                     player2_nick=game_data['player2Nick'],

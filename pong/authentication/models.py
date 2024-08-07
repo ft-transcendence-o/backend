@@ -9,6 +9,7 @@ class User(models.Model):
     usual_full_name = models.CharField(max_length=50)
     image_link = models.URLField(max_length=255)
     need_otp = models.BooleanField(default=True)
+    refresh_token = models.CharField(max_length=100)
 
 
 class OTPSecret(models.Model):
