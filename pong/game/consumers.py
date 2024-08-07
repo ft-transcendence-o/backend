@@ -53,10 +53,10 @@ class GameConsumer(AsyncWebsocketConsumer):
 
                 result = self.update()
                 await self.send(text_data=json.dumps({"game": result}))
-                await asyncio.sleep(0.033)
+                await asyncio.sleep(0.015)
         except asyncio.CancelledError:
             pass
-
+            
     def start_game(self):
         self.game_task = asyncio.create_task(self.game_loop())
 
@@ -75,13 +75,13 @@ class GameConsumer(AsyncWebsocketConsumer):
         elif key == "Down":
             self.panel2_pos[1] -= 0.6
         elif key == "Left":
-            self.panel2_pos[0] -= 0.6
-        elif key == "Right":
             self.panel2_pos[0] += 0.6
+        elif key == "Right":
+            self.panel2_pos[0] -= 0.6
 
     def init_game(self):
         self.ball_pos = np.array([0.0, 0.0, 0.0]) #공위치  #@
-        self.ball_vec = np.array([0.0, 1.0, 2.0]) #공이 움직이는 방향
+        self.ball_vec = np.array([0.0, 0.0, 2.0]) #공이 움직이는 방향
         self.ball_rot = np.array([0.0, 0.0, 0.0]) #공의 회전벡터
         self.angular_vec = np.array([0.0, 0.0, 0.0])
         # self.flag = True # 공이 날라가는 방향
