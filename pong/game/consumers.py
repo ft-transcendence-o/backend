@@ -53,31 +53,61 @@ class GameConsumer(AsyncWebsocketConsumer):
 
                 result = self.update()
                 await self.send(text_data=json.dumps({"game": result}))
-                await asyncio.sleep(0.015)
+                await asyncio.sleep(0.01)
         except asyncio.CancelledError:
             pass
-            
+
     def start_game(self):
         self.game_task = asyncio.create_task(self.game_loop())
 
     def process_key_input(self, key):
         """input key에 따른 처리 로직"""
+        key, state = key.split(',')
+        if state == "True":
+            state = True
+        else:
+            state = False
         if key == "W":
-            self.panel1_pos[1] += 0.6
+            self.key_state[0] = state
+            # self.panel1_pos[1] += 0.6
         elif key == "A":
-            self.panel1_pos[0] -= 0.6
+            self.key_state[1] = state
+            # self.panel1_pos[0] -= 0.6
         elif key == "S":
-            self.panel1_pos[1] -= 0.6
+            self.key_state[2] = state
+            # self.panel1_pos[1] -= 0.6
         elif key == "D":
-            self.panel1_pos[0] += 0.6
+            self.key_state[3] = state
+            # self.panel1_pos[0] += 0.6
         elif key == "Up":
-            self.panel2_pos[1] += 0.6
+            self.key_state[4] = state
+            # self.panel2_pos[1] += 0.6
         elif key == "Down":
-            self.panel2_pos[1] -= 0.6
+            self.key_state[6] = state
+            # self.panel2_pos[1] -= 0.6
         elif key == "Left":
-            self.panel2_pos[0] += 0.6
+            self.key_state[5] = state
+            # self.panel2_pos[0] += 0.6
         elif key == "Right":
-            self.panel2_pos[0] -= 0.6
+            self.key_state[7] = state
+            # self.panel2_pos[0] -= 0.6
+        print(self.key_state)
+        if self.key_state[0]:
+            self.panel1_pos[1] += 0.4
+        if self.key_state[1]:
+            self.panel1_pos[0] -= 0.4
+        if self.key_state[2]:
+            self.panel1_pos[1] -= 0.4
+        if self.key_state[3]:
+            self.panel1_pos[0] += 0.4
+        if self.key_state[4]:
+            self.panel2_pos[1] += 0.4
+        if self.key_state[5]:
+            self.panel2_pos[0] += 0.4
+        if self.key_state[6]:
+            self.panel2_pos[1] -= 0.4
+        if self.key_state[7]:
+            self.panel2_pos[0] -= 0.4
 
     def init_game(self):
         self.ball_pos = np.array([0.0, 0.0, 0.0]) #공위치  #@
@@ -87,6 +117,9 @@ class GameConsumer(AsyncWebsocketConsumer):
         # self.flag = True # 공이 날라가는 방향
         self.panel1_pos = np.array([0.0, 0.0, 50.0]) #panel1의 초기위치 #@
         self.panel2_pos = np.array([0.0, 0.0, -50.0]) #panel2의 초기위치 #@
+
+        # 키입력값 [W, A, S, D, UP, Left, Down, Right]
+        self.key_state = [False, False, False, False, False, False, False, False]
 
         # 골대쪽 벽면말고 사이드에 있는 4개의 plane들을 의미하며 각각([법선벡터], 원점으로부터의 거리)를 가지고 있다.
         self.planes = [(np.array([1, 0, 0]), 10), (np.array([-1, 0, 0]), 10), (np.array([0, 1, 0]), 10), (np.array([0, -1, 0]), 10)]
