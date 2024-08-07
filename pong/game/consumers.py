@@ -37,13 +37,11 @@ class GameConsumer(AsyncWebsocketConsumer):
         # await self.cleanup_resources()
 
     async def receive(self, text_data):
-        text_data_json = json.loads(text_data)
-        event = text_data_json["event"]
-        if event == "start":
+        if text_data == "start":
             self.init_game()
             self.start_game()
-        elif event == "key_input":
-            self.key_input = text_data_json.get("key_input")
+        else:
+            self.key_input = text_data
 
     async def game_loop(self):
         try:
