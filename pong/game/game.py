@@ -21,7 +21,8 @@ def validate_game(data, mode):
 
 class GameView(View):
     @login_required
-    async def get(self, request, user_id):
+    async def get(self, request, decoded_jwt):
+        user_id = decoded_jwt.get("user_id")
         page_number = int(request.GET.get('page', 1))
         page_size = int(request.GET.get('size', 10))
 
@@ -62,7 +63,8 @@ class GameView(View):
         }, safe=False)
 
     @login_required
-    async def post(self, request, user_id):
+    async def post(self, request, decoded_jwt):
+        user_id = decoded_jwt.get("user_id")
         try:
             data = json.loads(request.body)
             game = await sync_to_async(Game.objects.create)(
@@ -83,7 +85,8 @@ class GameView(View):
 
 class TournamentView(View):
     @login_required
-    async def post(self, request, user_id):
+    async def post(self, request, decoded_jwt):
+        user_id = decoded_jwt.get("user_id")
         try:
             data = json.loads(request.body)
             tournament_errors = {}

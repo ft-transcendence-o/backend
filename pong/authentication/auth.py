@@ -58,12 +58,13 @@ FRONT_BASE_URL = getenv("FRONT_BASE_URL")
 
 class UserInfo(View):
     @token_required
-    async def get(self, request, user_id):
+    async def get(self, request, decoded_jwt):
         """
         main 화면에서 보여줄 유저 정보를 반환하는 API
 
         :header Authorization: 인증을 위한 JWT
         """
+        user_id = decoded_jwt.get(user_id)
         user_info = await cache.aget(f'user_data_{user_id}')
         if not user_info:
             return JsonResponse({"error": "Invalid token"}, status=401)
@@ -99,13 +100,14 @@ class OAuthView(View):
         return self.create_redirect_response(redirect_url, encoded_jwt)
 
     @token_required
-    async def delete(self, request, user_id):
+    async def delete(self, request, decoded_jwt):
         """
         cache에 저장된 유저 정보 및 OTP패스 정보 폐기
         cookie JWT 폐기 및 홈 화면으로 리다이렉션
 
         :header Authorization: 인증을 위한 JWT
         """
+        user_id = decoded_jwt.get(user_id)
         cache.delete(f'user_data_{user_id}')
         # TODO: NOT USER otp_passed maybe need delete
         cache.delete(f'otp_passed_{user_id}')
@@ -276,12 +278,14 @@ class OAuthView(View):
 
 class QRcodeView(View):
     @token_required
-    async def get(self, request, user_id):
+    async def get(self, request, decoded_jwt):
         """
         QRcode에 필요한 secret값을 포함한 URI를 반환하는 함수
 
         :header Authorization: 인증을 위한 JWT
         """
+
+        user_id = decoded_jwt.get("user_id")
         try:
             user_data = await self.get_user_data(user_id)
             secret = self.get_user_secret(user_data)
@@ -312,7 +316,7 @@ class QRcodeView(View):
 
 class OTPView(View):
     @token_required
-    async def post(self, request, user_id):
+    async def post(self, request, decoded_jwt):
         """
         OTP 패스워드를 확인하는 view
         OTP 정보 확인 및 900초 지났을 경우 시도 횟수 초기화
@@ -324,7 +328,7 @@ class OTPView(View):
         :header Authorization: 인증을 위한 JWT
         :body input_password: 사용자가 입력한 OTP
         """
-        # user_data = await cache.aget(f"user_data_{user_id}")
+        user_id = decoded_jwt.get("user_id")
         otp_data = await self.get_otp_data(user_id)
         if not otp_data:
             return JsonResponse({"error": "Can't found OTP data."}, status=500)
@@ -396,6 +400,7 @@ class OTPView(View):
             is_verified=otp_data['is_verified']
         )
 
+    # TODO: it can be change by function sync_to_async(func)
     @sync_to_async
     def update_otp_data(self, user_id, data):
         """

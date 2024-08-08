@@ -16,7 +16,7 @@ STATE = getenv("STATE")
 
 def validate_jwt(request):
     """
-    JWT 검증 및 user id 추출 함수
+    JWT 검증 및 디코딩 함수
     """
     encoded_jwt = request.COOKIES.get("jwt")
     if not encoded_jwt:
@@ -30,11 +30,6 @@ def validate_jwt(request):
         return None, JsonResponse({"error": "Decoding jwt failed"}, status=401)
 
     return decoded_jwt, None
-    user_id = decoded_jwt.get("user_id")
-    if not user_id:
-        return None, JsonResponse({"error": "No user id provided"}, status=401)
-
-    return user_id, None
 
 def auth_decorator_factory(check_otp=False):
     def decorator(func):
@@ -46,9 +41,13 @@ def auth_decorator_factory(check_otp=False):
             :param check_otp: OTP 통과 확인이 필요한지 나타내는 인자
             :header Authorization: access_token을 담은 JWT
             """
-            user_id, error_response = validate_jwt(request)
+            decoded_jwt, error_response = validate_jwt(request)
             if error_response:
                 return error_response
+
+            user_id = decoded_jwt.get("user_id")
+            if not user_id:
+                return None, JsonResponse({"error": "No user id provided"}, status=401)
 
             user_data = await cache.aget(f'user_data_{user_id}')
             if not user_data:
@@ -68,7 +67,7 @@ def auth_decorator_factory(check_otp=False):
                         "show_otp_qr": show_otp_qr
                     }, status=403)
 
-            return await func(self, request, user_id, *args, **kwargs)
+            return await func(self, request, decoded_jwt, *args, **kwargs)
         return wrapper
     return decorator
 
