@@ -96,7 +96,7 @@ class OAuthView(View):
             return JsonResponse({"error": user_info}, status=500)
 
         encoded_jwt = self.create_jwt_token(tokens["access_token"], user_info["id"])
-        redirect_url = await self.get_redirect_url(tokens["access_token"], user_info["otp"].is_verified)
+        redirect_url = self.get_redirect_url(tokens["otp_verified"], user_info["otp"].is_verified)
         return self.create_redirect_response(redirect_url, encoded_jwt)
 
     @token_required
@@ -109,8 +109,6 @@ class OAuthView(View):
         """
         user_id = decoded_jwt.get(user_id)
         cache.delete(f'user_data_{user_id}')
-        # TODO: NOT USER otp_passed maybe need delete
-        cache.delete(f'otp_passed_{user_id}')
         response = JsonResponse({"message": "logout success"})
         response.delete_cookie('jwt')
         return response
@@ -137,9 +135,8 @@ class OAuthView(View):
             return JsonResponse({"error": user_info}, status=500)
         return await self.prepare_response(tokens, user_info)
 
-    async def get_redirect_url(self, access_token, is_verified):
-        # TODO: NOT CACHING otp_passed cache so need another choice
-        if await cache.aget(f'otp_passed_{access_token}', False) == False:
+    def get_redirect_url(self, otp_verified, is_verified):
+        if otp_verified == False:
             if is_verified == False:
                 return FRONT_BASE_URL + "/QRcode"
             else:
@@ -205,6 +202,7 @@ class OAuthView(View):
         except transaction.TransactionManagementError as e:
             return False, str(e)
 
+    # DEPRECATED
     async def prepare_response(self, tokens, user_info):
         encoded_jwt = jwt.encode({
                 "access_token": tokens["access_token"],
@@ -346,10 +344,26 @@ class OTPView(View):
 
         if self.verify_otp(request, otp_data['secret']):
             await self.update_otp_success(otp_data, user_id)
-            return JsonResponse({"success": "OTP authentication verified"}, status=200)
+            return await self.create_success_response(decoded_jwt)
 
         await self.update_otp_data(user_id, otp_data)
         return self.password_fail_response(otp_data['attempts'])
+
+    async def create_success_response(self, request, decoded_jwt):
+        response = JsonResponse({"success": "OTP authentication verified"})
+        encoded_jwt = jwt.encode({
+            "access_token": decoded_jwt.get("access_token"),
+            "user_id": decoded_jwt.get("user_id"),
+            "otp_verified": True,
+        }, JWT_SECRET, algorithm="HS256")
+        response.set_cookie(
+            "jwt",
+            encoded_jwt,
+            httponly=True,
+            secure=True,
+            samesite="Lax"
+        )
+        return response
 
     @sync_to_async
     def get_otp_data(self, user_id):
@@ -392,7 +406,6 @@ class OTPView(View):
         otp_data['attempts'] = 0
         otp_data['is_locked'] = False
         otp_data['is_verified'] = True
-        # cache.set(f'otp_passed_{access_token}', user_id, timeout=TOKEN_EXPIRES)
         return OTPSecret.objects.filter(user_id=user_id).update(
             attempts=otp_data['attempts'],
             last_attempt=otp_data['last_attempt'],

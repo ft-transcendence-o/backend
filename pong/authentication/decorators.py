@@ -57,15 +57,13 @@ def auth_decorator_factory(check_otp=False):
                 set_refresh_token(user_id, tokens["refresh_token"])
                 return await create_response(request, decoded_jwt, tokens)
 
-            # TODO: NEED CHANGE OTP CHECK METHOD 
             if check_otp:
-                otp_verified = await cache.aget(f'otp_passed_{user_id}')
-                show_otp_qr = user_data.get('is_verified')
+                otp_verified = decoded_jwt.get("otp_verified")
                 if not otp_verified:
                     return JsonResponse({
                         "error": "Need OTP authentication",
                         "otp_verified": otp_verified,
-                        "show_otp_qr": show_otp_qr
+                        "show_otp_qr": user_data.get('is_verified')
                     }, status=403)
 
             return await func(self, request, decoded_jwt, *args, **kwargs)
@@ -110,7 +108,7 @@ async def create_response(request, decoded_jwt, tokens):
         "access_token": tokens['access_token'],
         "user_id": decoded_jwt.get("user_id"),
         "otp_verified": decoded_jwt.get("otp_verified")
-    })
+    }, JWT_SECRET, algorithm="HS256")
     response.set_cookie('jwt', encoded_jwt, httponly=True, secure=True)
     return response
 
