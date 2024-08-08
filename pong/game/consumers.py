@@ -37,7 +37,13 @@ class GameConsumer(AsyncWebsocketConsumer):
         # await self.cleanup_resources()
 
     async def receive(self, text_data):
-        if text_data == "start":
+        if text_data == "first":
+            #play정보
+            self.player1Score = 0
+            self.player2Score = 0
+            self.init_game()
+            self.start_game()
+        elif text_data == "start":
             self.init_game()
             self.start_game()
         else:
@@ -71,10 +77,13 @@ class GameConsumer(AsyncWebsocketConsumer):
                 self.move_panel()
 
                 result = self.update()
+                # print(1)
                 await self.send(text_data=json.dumps({"game": result}))
+                # print(2)
                 await asyncio.sleep(0.006)
+                # print(3)
         except asyncio.CancelledError:
-            pass
+            print("CancelledError")
 
     def start_game(self):
         self.game_task = asyncio.create_task(self.game_loop())
@@ -84,8 +93,6 @@ class GameConsumer(AsyncWebsocketConsumer):
         for k, v in key.items():
             if k in self.key_mapping:
                 self.key_state[self.key_mapping[k]] = v
-        
-        
 
     def init_game(self):
         self.ball_pos = np.array([0.0, 0.0, 0.0]) #공위치  #@
@@ -136,11 +143,14 @@ class GameConsumer(AsyncWebsocketConsumer):
                 break
 
             self.collisionWithGoalArea()
+
         # self.updatePanel()
+        # print("player1: ", self.player1Score)
+        # print("player2: ", self.player2Score)
         return ({
             "ball":self.ball_pos.tolist(),
             "panel1": self.panel1_pos.tolist(),
-            "panel2":self.panel2_pos.tolist()
+            "panel2":self.panel2_pos.tolist(),
             })
 
     # 벽4가지를 순회하며 어느 벽과 충돌했는지 판별하고 부딪힌 벽을 반환
@@ -186,6 +196,11 @@ class GameConsumer(AsyncWebsocketConsumer):
         # self.ball_vec = self.ball_vec - reflection + angularComponent
         #updateAngularVector()
         self.ball_vec = self.ball_vec - reflection
+    
+    # 각속도벡터 업데이트함수, 인자로 충돌한 평면을 받는다
+    # def updateAngularVector(self, plane) {
+
+    # }
 
 
     # panel이 위치한 평면과 충돌시
@@ -201,18 +216,31 @@ class GameConsumer(AsyncWebsocketConsumer):
             if self.checkBallInPanel(self.panel2_pos):
                 self.collisionInPanel(self.panel2_plane) # panel2와 충돌한 경우
             else:
-                self.plane1Win()
-
+                self.player1Win()
 
     # player2가 이긴경우
     def player2Win(self):
         self.ball_vec = np.array([0, 0, 0])
         self.angular_vec = np.array([0, 0, 0.1])
+        self.ball_pos = np.array([0, 0, 0])
+        self.player2Score += 1
+        result = {
+            "score": [self.player1Score, self.player2Score],
+        }
+        asyncio.create_task(self.send(text_data=json.dumps({"score": result})))
+        print("player2win", self.player2Score)
     
     # player1이 이긴경우
     def player1Win(self):
         self.ball_vec = np.array([0, 0, 0])
         self.angular_vec = np.array([0, 0, 0.1])
+        self.ball_pos = np.array([0, 0, 0])
+        self.player1Score += 1
+        result = {
+            "score": [self.player1Score, self.player2Score],
+        }
+        asyncio.create_task(self.send(text_data=json.dumps({"score": result})))
+        print("player1win", self.player1Score)
 
     # 공 중심의 x, y좌표가 panel안에 위치하는지 확인하는 함수
     # panel은 panel의 위치좌표를 의미한다
