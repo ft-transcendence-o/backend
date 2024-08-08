@@ -64,12 +64,11 @@ class UserInfo(View):
 
         :header Authorization: 인증을 위한 JWT
         """
-        user_id = decoded_jwt.get(user_id)
+        user_id = decoded_jwt.get("user_id")
         user_info = await cache.aget(f'user_data_{user_id}')
         if not user_info:
             return JsonResponse({"error": "Invalid token"}, status=401)
         data = {
-            'id': user_info['id'],
             'email': user_info['email'],
             'login': user_info['login'],
             'usual_full_name': user_info['usual_full_name'],
@@ -91,12 +90,12 @@ class OAuthView(View):
         if not tokens:
             return JsonResponse({"error": "Failed to obtain token"}, status=400)
 
-        success, user_info = await self.get_user_info(tokens["access_token"])
+        success, user_info = await self.get_user_info(tokens)
         if not success:
             return JsonResponse({"error": user_info}, status=500)
 
-        encoded_jwt = self.create_jwt_token(tokens["access_token"], user_info["id"])
-        redirect_url = self.get_redirect_url(tokens["otp_verified"], user_info["otp"].is_verified)
+        encoded_jwt = self.create_jwt_token(tokens["access_token"], user_info["user"].id)
+        redirect_url = self.get_redirect_url(user_info["user"].need_otp, user_info["otp"].is_verified)
         return self.create_redirect_response(redirect_url, encoded_jwt)
 
     @token_required
@@ -135,8 +134,8 @@ class OAuthView(View):
             return JsonResponse({"error": user_info}, status=500)
         return await self.prepare_response(tokens, user_info)
 
-    def get_redirect_url(self, otp_verified, is_verified):
-        if otp_verified == False:
+    def get_redirect_url(self, need_otp, is_verified):
+        if need_otp == True:
             if is_verified == False:
                 return FRONT_BASE_URL + "/QRcode"
             else:
@@ -349,7 +348,7 @@ class OTPView(View):
         await self.update_otp_data(user_id, otp_data)
         return self.password_fail_response(otp_data['attempts'])
 
-    async def create_success_response(self, request, decoded_jwt):
+    async def create_success_response(self, decoded_jwt):
         response = JsonResponse({"success": "OTP authentication verified"})
         encoded_jwt = jwt.encode({
             "access_token": decoded_jwt.get("access_token"),

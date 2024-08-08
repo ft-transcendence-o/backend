@@ -8,6 +8,7 @@ import jwt
 
 from authentication.models import User
 
+API_URL = getenv("API_URL")
 JWT_SECRET = getenv("JWT_SECRET")
 INTRA_UID = getenv("INTRA_UID")
 INTRA_SECRET_KEY = getenv("INTRA_SECRET_KEY")
@@ -54,7 +55,7 @@ def auth_decorator_factory(check_otp=False):
                 tokens = await refresh_token(request, user_id)
                 if not tokens:
                     return JsonResponse({"error": "Need login"}, status=401)
-                set_refresh_token(user_id, tokens["refresh_token"])
+                await set_refresh_token(user_id, tokens["refresh_token"])
                 return await create_response(request, decoded_jwt, tokens)
 
             if check_otp:
@@ -71,7 +72,7 @@ def auth_decorator_factory(check_otp=False):
     return decorator
 
 async def refresh_token(request, user_id):
-    refresh_token = get_refresh_token(user_id)
+    refresh_token = await get_refresh_token(user_id)
     data = {
         "grant_type": "refresh_token",
         "client_id": INTRA_UID,
@@ -95,12 +96,12 @@ async def refresh_token(request, user_id):
 
 @sync_to_async
 def get_refresh_token(user_id):
-    user = User.objects.get(user_id=user_id)
+    user = User.objects.get(id=user_id)
     return user.refresh_token
 
 @sync_to_async
-def set_refresh_token(refresh_token):
-    return User.objects.filter(user_id=user_id).update(refresh_token=refresh_token)
+def set_refresh_token(user_id, refresh_token):
+    return User.objects.filter(id=user_id).update(refresh_token=refresh_token)
 
 async def create_response(request, decoded_jwt, tokens):
     response = HttpResponseRedirect(request.get_full_path())
