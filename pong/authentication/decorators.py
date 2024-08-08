@@ -1,5 +1,5 @@
 from asgiref.sync import sync_to_async
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseRedirect
 from django.core.cache import cache
 from functools import wraps
 from os import getenv
@@ -54,7 +54,8 @@ def auth_decorator_factory(check_otp=False):
                 tokens = await refresh_token(request, user_id)
                 if not tokens:
                     return JsonResponse({"error": "Need login"}, status=401)
-                # TODO: UPDATE TOKEN VALUE IN COOKIE AND DB
+                set_refresh_token(user_id, tokens["refresh_token"])
+                return await create_response(request, decoded_jwt, tokens)
 
             # TODO: NEED CHANGE OTP CHECK METHOD 
             if check_otp:
@@ -98,6 +99,21 @@ async def refresh_token(request, user_id):
 def get_refresh_token(user_id):
     user = User.objects.get(user_id=user_id)
     return user.refresh_token
+
+@sync_to_async
+def set_refresh_token(refresh_token):
+    return User.objects.filter(user_id=user_id).update(refresh_token=refresh_token)
+
+async def create_response(request, decoded_jwt, tokens):
+    response = HttpResponseRedirect(request.get_full_path())
+    encoded_jwt = jwt.encode({
+        "access_token": tokens['access_token'],
+        "user_id": decoded_jwt.get("user_id"),
+        "otp_verified": decoded_jwt.get("otp_verified")
+    })
+    response.set_cookie('jwt', encoded_jwt, httponly=True, secure=True)
+    return response
+
 
 login_required = auth_decorator_factory(check_otp=True)
 token_required = auth_decorator_factory(check_otp=False)
