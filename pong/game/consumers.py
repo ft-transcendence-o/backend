@@ -81,14 +81,9 @@ class GameConsumer(AsyncWebsocketConsumer):
 
     def process_key_input(self, key):
         """input key에 따른 처리 로직"""
-        print(key)
         for k, v in key.items():
-            # print("k:", "[" + k + "]")
-            # print("type of v:", type(v))
-            # print("v:", "[" + v + "]")
             if k in self.key_mapping:
                 self.key_state[self.key_mapping[k]] = v
-        print(self.key_state)
         
         
 
