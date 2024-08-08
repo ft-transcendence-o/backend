@@ -281,11 +281,12 @@ class QRcodeView(View):
 
         :header Authorization: 인증을 위한 JWT
         """
-
         user_id = decoded_jwt.get("user_id")
         try:
             user_data = await self.get_user_data(user_id)
             secret = self.get_user_secret(user_data)
+            if user_data["is_verified"] == True:
+                return JsonResponse({"error": "Can't show QRcode"}, status=400)
             uri = self.generate_otp_uri(user_data, secret)
             return JsonResponse({"otpauth_uri": uri}, status=200)
         except Exception as e:
