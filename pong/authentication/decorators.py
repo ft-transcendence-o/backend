@@ -22,8 +22,6 @@ def validate_jwt(request):
     encoded_jwt = request.COOKIES.get("jwt")
     if not encoded_jwt:
         return None, JsonResponse({"error": "No jwt in request"}, status=401)
-    if encoded_jwt.startswith("Bearer "):
-        encoded_jwt = encoded_jwt[7:]
 
     try:
         decoded_jwt = jwt.decode(encoded_jwt, JWT_SECRET, algorithms=["HS256"])
@@ -58,14 +56,18 @@ def auth_decorator_factory(check_otp=False):
                 await set_refresh_token(user_id, tokens["refresh_token"])
                 return await create_response(request, decoded_jwt, tokens)
 
-            if check_otp:
-                otp_verified = decoded_jwt.get("otp_verified")
-                if not otp_verified:
-                    return JsonResponse({
-                        "error": "Need OTP authentication",
-                        "otp_verified": otp_verified,
-                        "show_otp_qr": user_data.get('is_verified')
-                    }, status=403)
+            otp_verified = decoded_jwt.get("otp_verified")
+            if check_otp and otp_verified == False:
+                return JsonResponse({
+                    "error": "Need OTP authentication",
+                    "otp_verified": otp_verified,
+                    "show_otp_qr": user_data.get('is_verified')
+                }, status=403)
+                
+            if check_otp == False and otp_verified:
+                return JsonResponse({
+                    "error": "Already passed OTP authentication"
+                }, status=403)
 
             return await func(self, request, decoded_jwt, *args, **kwargs)
         return wrapper
