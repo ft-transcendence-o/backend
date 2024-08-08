@@ -1,14 +1,22 @@
+from asgiref.sync import sync_to_async
 from django.http import JsonResponse
 from django.core.cache import cache
 from functools import wraps
 from os import getenv
+import aiohttp
 import jwt
 
+from authentication.models import User
+
 JWT_SECRET = getenv("JWT_SECRET")
+INTRA_UID = getenv("INTRA_UID")
+INTRA_SECRET_KEY = getenv("INTRA_SECRET_KEY")
+REDIRECT_URI = getenv("REDIRECT_URI")
+STATE = getenv("STATE")
 
 def validate_jwt(request):
     """
-    JWT 검증 및 액세스 토큰 추출 함수
+    JWT 검증 및 디코딩 함수
     """
     encoded_jwt = request.COOKIES.get("jwt")
     if not encoded_jwt:
@@ -21,11 +29,7 @@ def validate_jwt(request):
     except:
         return None, JsonResponse({"error": "Decoding jwt failed"}, status=401)
 
-    access_token = decoded_jwt.get("access_token")
-    if not access_token:
-        return None, JsonResponse({"error": "No access token provided"}, status=401)
-
-    return access_token, None
+    return decoded_jwt, None
 
 def auth_decorator_factory(check_otp=False):
     def decorator(func):
@@ -37,16 +41,24 @@ def auth_decorator_factory(check_otp=False):
             :param check_otp: OTP 통과 확인이 필요한지 나타내는 인자
             :header Authorization: access_token을 담은 JWT
             """
-            access_token, error_response = validate_jwt(request)
+            decoded_jwt, error_response = validate_jwt(request)
             if error_response:
                 return error_response
 
-            user_data = await cache.aget(f'user_data_{access_token}')
-            if not user_data:
-                return JsonResponse({"error": "Invalid token"}, status=401)
+            user_id = decoded_jwt.get("user_id")
+            if not user_id:
+                return None, JsonResponse({"error": "No user id provided"}, status=401)
 
+            user_data = await cache.aget(f'user_data_{user_id}')
+            if not user_data:
+                tokens = await refresh_token(request, user_id)
+                if not tokens:
+                    return JsonResponse({"error": "Need login"}, status=401)
+                # TODO: UPDATE TOKEN VALUE IN COOKIE AND DB
+
+            # TODO: NEED CHANGE OTP CHECK METHOD 
             if check_otp:
-                otp_verified = await cache.aget(f'otp_passed_{access_token}')
+                otp_verified = await cache.aget(f'otp_passed_{user_id}')
                 show_otp_qr = user_data.get('is_verified')
                 if not otp_verified:
                     return JsonResponse({
@@ -55,9 +67,37 @@ def auth_decorator_factory(check_otp=False):
                         "show_otp_qr": show_otp_qr
                     }, status=403)
 
-            return await func(self, request, access_token, *args, **kwargs)
+            return await func(self, request, decoded_jwt, *args, **kwargs)
         return wrapper
     return decorator
+
+async def refresh_token(request, user_id):
+    refresh_token = get_refresh_token(user_id)
+    data = {
+        "grant_type": "refresh_token",
+        "client_id": INTRA_UID,
+        "client_secret": INTRA_SECRET_KEY,
+        "redirect_uri": REDIRECT_URI,
+        "refresh_token": refresh_token,
+        "state": STATE,
+    }
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f'{API_URL}/oauth/token', data=data) as response:
+                response_data = await response.json()
+                if response.status != 200:
+                    return None
+                return {
+                    "access_token": response_data.get("access_token"),
+                    "refresh_token": response_data.get("refresh_token")
+                }
+    except aiohttp.ClientError:
+        return None
+
+@sync_to_async
+def get_refresh_token(user_id):
+    user = User.objects.get(user_id=user_id)
+    return user.refresh_token
 
 login_required = auth_decorator_factory(check_otp=True)
 token_required = auth_decorator_factory(check_otp=False)
