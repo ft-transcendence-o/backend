@@ -34,8 +34,7 @@ class GameConsumer(AsyncWebsocketConsumer):
                 if self.key_input:
                     self.game.process_key_input(self.key_input)
                     self.key_input = None
-                self.game.move_panel()
-
+                self.game.move_panels()
                 result = self.game.update()
                 await self.send(text_data=json.dumps({"game": result}))
                 await asyncio.sleep(0.006)
