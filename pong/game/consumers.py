@@ -132,7 +132,7 @@ class PongGame:
             if collision_plane:
                 self.update_ball_vector(collision_plane)
                 break
-            self.check_collision_with_goal_area()
+            await self.check_collision_with_goal_area()
 
         await self.send_callback(
             {
@@ -172,21 +172,21 @@ class PongGame:
         ) / math.sqrt(a**2 + b**2 + c**2)
 
     # panel이 위치한 평면과 충돌시
-    def check_collision_with_goal_area(self):
+    async def check_collision_with_goal_area(self):
         if self.ball_pos[2] >= 48:  # z좌표가 48이상인경우 #player1쪽 벽과 충돌한경우
             if self.is_ball_in_panel(self.panel1_pos):  # x,y 좌표 판정
                 self.handle_panel_collision(
                     self.panel1_plane, self.panel1_pos
                 )  # panel1과 충돌한경우
             else:
-                self.player2_win()  # panel1이 위치한 면에 충돌한경우
+                await self.player2_win()  # panel1이 위치한 면에 충돌한경우
         elif self.ball_pos[2] <= -48:
             if self.is_ball_in_panel(self.panel2_pos):
                 self.handle_panel_collision(
                     self.panel2_plane, self.panel2_pos
                 )  # panel2와 충돌한 경우
             else:
-                self.player1_win()
+                await self.player1_win()
 
     # 공 중심의 x, y좌표가 panel안에 위치하는지 확인하는 함수
     def is_ball_in_panel(self, panel_pos):
@@ -244,7 +244,7 @@ class PongGame:
         self.angular_vec = np.array([0.0, 0.0, 0.0])
         self.ball_pos = np.array([0.0, 0.0, 0.0])
         self.player1_score += 1
-        await send_score_callback()
+        await self.send_score_callback()
         if self.player1_score >= GAME_END_SCORE:
             self.game_state = "ended"
 
@@ -253,7 +253,7 @@ class PongGame:
         self.angular_vec = np.array([0.0, 0.0, 0.0])
         self.ball_pos = np.array([0.0, 0.0, 0.0])
         self.player2_score += 1
-        await send_score_callback()
+        await self.send_score_callback()
         if self.player2_score >= GAME_END_SCORE:
             self.game_state = "ended"
 
