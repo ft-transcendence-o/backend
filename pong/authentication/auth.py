@@ -437,6 +437,7 @@ class StatusView(View):
         except:
             return JsonResponse({"error": "Decoding jwt failed"}, status=401)
 
+        user_id = decoded_jwt.get("user_id")
         if response := await token_refresh_if_invalid(request, decoded_jwt, user_id):
             return response
 
