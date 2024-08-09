@@ -35,20 +35,19 @@ class GameConsumer(AsyncWebsocketConsumer):
                     self.game.process_key_input(self.key_input)
                     self.key_input = None
                 self.game.move_panels()
-
                 game_state, game_data = self.game.update()
                 if game_state == "ended":
                     await self.send(text_data=json.dumps({
                         "type": "game_over",
                         "scores": f"{self.player1_score}:{self.player2_score}",
                         }))
+                    break
                 else:
                     await self.send(text_data=json.dumps({
                         "type": "game_update",
-                        "scores": f"{self.player1_score}:{self.player2_score}",
+                        "scores": f"{self.game.player1_score}:{self.game.player2_score}",
                         "game": game_data,
                         }))
-                    break
 
                 await asyncio.sleep(0.006)
         except asyncio.CancelledError:
