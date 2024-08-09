@@ -406,7 +406,7 @@ class OTPView(View):
         otp_data['attempts'] = 0
         otp_data['is_locked'] = False
         otp_data['is_verified'] = True
-        return update_otp_data(user_id, otp_data)
+        return self.update_otp_data(user_id, otp_data)
 
     def update_otp_data(self, user_id, data):
         """
@@ -443,7 +443,7 @@ class StatusView(View):
 
         otp_verified = decoded_jwt.get("otp_verified")
         return JsonResponse({
-            "access_token": True,
+            "access_token_valid": True,
             "otp_authenticated": otp_verified
         }, status=200)
 
