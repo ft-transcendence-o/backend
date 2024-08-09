@@ -12,7 +12,7 @@ class GameConsumer(AsyncWebsocketConsumer):
         await self.accept()
         self.game_task = None
         self.key_input = None
-        self.game = PongGame()
+        self.game = PongGame(self.send_callback)
 
     async def disconnect(self, close_code):
         if self.game_task:
@@ -28,6 +28,9 @@ class GameConsumer(AsyncWebsocketConsumer):
         else:
             self.key_input = json.loads(text_data)
 
+    async def send_callback(self, data):
+        await self.send(text_data=json.dumps(data))
+
     async def game_loop(self):
         try:
             while True:
@@ -35,28 +38,7 @@ class GameConsumer(AsyncWebsocketConsumer):
                     self.game.process_key_input(self.key_input)
                     self.key_input = None
                 self.game.move_panels()
-                game_state, game_data = self.game.update()
-                if game_state == "ended":
-                    await self.send(
-                        text_data=json.dumps(
-                            {
-                                "type": "game_over",
-                                "scores": f"{self.player1_score}:{self.player2_score}",
-                            }
-                        )
-                    )
-                    break
-                else:
-                    await self.send(
-                        text_data=json.dumps(
-                            {
-                                "type": "game_update",
-                                "scores": f"{self.game.player1_score}:{self.game.player2_score}",
-                                "game": game_data,
-                            }
-                        )
-                    )
-
+                await self.game.update()
                 await asyncio.sleep(0.006)
         except asyncio.CancelledError:
             print("CancelledError")
@@ -79,7 +61,8 @@ GAME_END_SCORE = 3
 
 
 class PongGame:
-    def __init__(self):
+    def __init__(self, send_callback):
+        self.send_callback = send_callback
         self.ball_pos = np.array([0.0, 0.0, 0.0])  # 공위치
         self.ball_vec = np.array([0.0, 0.0, 1.0])  # 공이 움직이는 방향
         self.ball_rot = np.array([0.0, 0.0, 0.0])  # 공의 회전벡터
@@ -137,7 +120,7 @@ class PongGame:
         elif self.key_state[7]:
             self.panel2_pos[0] -= ball_speed
 
-    def update(self):
+    async def update(self):
         steps = 10
         for i in range(steps):
             movement = np.copy(self.ball_vec) * (0.4 / steps)
@@ -149,14 +132,13 @@ class PongGame:
                 break
             self.check_collision_with_goal_area()
 
-        return (
-            self.game_state,
+        await self.send_callback(
             {
                 "ball_pos": self.ball_pos.tolist(),
                 "panel1": self.panel1_pos.tolist(),
                 "panel2": self.panel2_pos.tolist(),
                 "ball_rot": self.ball_rot.tolist(),
-            },
+            }
         )
 
     # 벽4가지를 순회하며 어느 벽과 충돌했는지 판별하고 부딪힌 벽을 반환
@@ -166,7 +148,7 @@ class PongGame:
             if isinstance(collision_point, np.ndarray):
                 self.ball_pos = collision_point
                 # 현재 공의 좌표에 평면의 법선벡터 * 2를 해서 더해준다
-                self.ball_pos += (plane[0] * 2)
+                self.ball_pos += plane[0] * 2
                 return plane
         return None
 
@@ -195,7 +177,6 @@ class PongGame:
                     self.panel1_plane, self.panel1_pos
                 )  # panel1과 충돌한경우
             else:
-                print("player2_win")
                 self.player2_win()  # panel1이 위치한 면에 충돌한경우
         elif self.ball_pos[2] <= -48:
             if self.is_ball_in_panel(self.panel2_pos):
@@ -203,7 +184,6 @@ class PongGame:
                     self.panel2_plane, self.panel2_pos
                 )  # panel2와 충돌한 경우
             else:
-                print("player1_win")
                 self.player1_win()
 
     # 공 중심의 x, y좌표가 panel안에 위치하는지 확인하는 함수
@@ -257,18 +237,28 @@ class PongGame:
             # 회전 벡터의 크기를 조정하여 안정적인 값 유지
             self.ball_rot *= 0.1 / spin_speed
 
-    def player1_win(self):
+    async def player1_win(self):
         self.ball_vec = np.array([0.0, 0.0, 1.0])
         self.angular_vec = np.array([0.0, 0.0, 0.0])
         self.ball_pos = np.array([0.0, 0.0, 0.0])
         self.player1_score += 1
+        await send_score_callback()
         if self.player1_score >= GAME_END_SCORE:
             self.game_state = "ended"
 
-    def player2_win(self):
+    async def player2_win(self):
         self.ball_vec = np.array([0.0, 0.0, 1.0])
         self.angular_vec = np.array([0.0, 0.0, 0.0])
         self.ball_pos = np.array([0.0, 0.0, 0.0])
         self.player2_score += 1
+        await send_score_callback()
         if self.player2_score >= GAME_END_SCORE:
             self.game_state = "ended"
+
+    async def send_score_callback(self):
+        await self.send_callback(
+            {
+                "type": "score",
+                "scores": f"{self.player1_score}:{self.player2_score}",
+            }
+        )
