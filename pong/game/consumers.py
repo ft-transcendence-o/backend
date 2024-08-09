@@ -46,6 +46,10 @@ class GameConsumer(AsyncWebsocketConsumer):
         self.game_task = asyncio.create_task(self.game_loop())
 
 
+KEY_MAPPING = {
+    "KeyW": 0, "KeyA": 1, "KeyS": 2, "KeyD": 3,
+    "ArrowUp": 4, "ArrowDown": 6, "ArrowLeft": 5, "ArrowRight": 7
+}
 
 class PongGame:
     def __init__(self):
@@ -59,10 +63,6 @@ class PongGame:
 
         # 키입력값 [W, A, S, D, UP, Left, Down, Right]
         self.key_state = [False, False, False, False, False, False, False, False]
-        self.key_mapping = {
-            "KeyW": 0, "KeyA": 1, "KeyS": 2, "KeyD": 3,
-            "ArrowUp": 4, "ArrowDown": 6, "ArrowLeft": 5, "ArrowRight": 7
-        }
 
         # 골대쪽 벽면말고 사이드에 있는 4개의 plane들을 의미하며 각각([법선벡터], 원점으로부터의 거리)를 가지고 있다.
         self.planes = [(np.array([1, 0, 0]), 10), (np.array([-1, 0, 0]), 10), (np.array([0, 1, 0]), 10), (np.array([0, -1, 0]), 10)]
@@ -83,8 +83,8 @@ class PongGame:
 
     def process_key_input(self, key_input):
         for k, v in key_input.items():
-            if k in self.key_mapping:
-                self.key_state[self.key_mapping[k]] = v
+            if k in KEY_MAPPING:
+                self.key_state[KEY_MAPPING[k]] = v
 
     def move_panels(self):
         ball_speed = 0.2
