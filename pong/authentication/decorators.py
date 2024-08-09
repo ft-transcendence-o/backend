@@ -46,7 +46,7 @@ def auth_decorator_factory(check_otp=False):
 
             user_id = decoded_jwt.get("user_id")
             if not user_id:
-                return None, JsonResponse({"error": "No user id provided"}, status=401)
+                return JsonResponse({"error": "No user id provided"}, status=401)
 
             user_data = await cache.aget(f'user_data_{user_id}')
             if not user_data:
