@@ -32,17 +32,6 @@ logger = logging.getLogger(__name__)
         https://api.intra.42.fr/v2/me
 """
 
-"""
-backend 인증 로직
-1. frontend에서 redirectURI를 통하여 얻은 "code"를 받는다
-2. "code"를 access_token으로 exchange한다.
-3. access_token을 사용하여 /v2/me 에서 정보를 받는다.
-4. email, secret 정보를 사용하여 2FA를 실행한다
-5. 첫번째 로그인의 경우 OTP에 필요한 secret을 생성하고
-    URI로 QR code를 그린다
-6. QR code를 사용해 google authenticator 등록
-7. OTP 입력 및 검증
-"""
 TOKEN_EXPIRES= 10
 LOCK_ACCOUNT = 9
 MAX_ATTEMPTS = 5
@@ -56,26 +45,18 @@ AUTH_PAGE = getenv("AUTH_PAGE")
 FRONT_BASE_URL = getenv("FRONT_BASE_URL")
 
 
-class UserInfo(View):
-    @token_required
-    async def get(self, request, decoded_jwt):
-        """
-        main 화면에서 보여줄 유저 정보를 반환하는 API
-
-        :header Authorization: 인증을 위한 JWT
-        """
-        user_id = decoded_jwt.get("user_id")
-        user_info = await cache.aget(f'user_data_{user_id}')
-        if not user_info:
-            return JsonResponse({"error": "Invalid token"}, status=401)
-        data = {
-            'email': user_info['email'],
-            'login': user_info['login'],
-            'usual_full_name': user_info['usual_full_name'],
-            'image_link': user_info['image_link'],
-        }
-        return JsonResponse(data, status=200)
-
+"""
+backend 인증 로직
+1. OAuthView에 GET요청을 보낸다.
+2. redirectURI를 통하여 "code"를 query parameter로 받는다 
+2. "code"를 access_token으로 exchange한다.
+3. access_token을 사용하여 /v2/me 에서 정보를 받는다.
+4. email, secret 정보를 사용하여 2FA를 실행한다
+5. 첫번째 로그인의 경우 OTP에 필요한 secret을 생성하고
+    URI로 QR code를 그린다
+6. QR code를 사용해 google authenticator 등록
+7. OTP 입력 및 검증
+"""
 class OAuthView(View):
     async def get(self, request):
         """
@@ -104,35 +85,13 @@ class OAuthView(View):
         cache에 저장된 유저 정보 및 OTP패스 정보 폐기
         cookie JWT 폐기 및 홈 화면으로 리다이렉션
 
-        :header Authorization: 인증을 위한 JWT
+        :cookie jwt: 인증을 위한 JWT
         """
         user_id = decoded_jwt.get("user_id")
         cache.delete(f'user_data_{user_id}')
         response = JsonResponse({"message": "logout success"})
         response.delete_cookie('jwt')
         return response
-
-    # DEPRECATED
-    async def post(self, request):
-        """
-        frontend에서 /oauth/authorize 경로로 보낸 후 redirection되어서 오는 곳
-        querystring으로 code를 가져온 후 code를 access_token으로 교환
-        access_token을 cache에 저장해서 expires_in을 체크한다
-
-        :body code: access_token과 교환하기 위한 code
-        """
-        code = self.extract_code(request)
-        if not code:
-            return JsonResponse({"error": "No code value in querystring"}, status=400)
-
-        tokens = await self.exchange_code_for_token(code)
-        if not tokens:
-            return JsonResponse({"error": "Failed to obtain token"}, status=400)
-
-        success, user_info = await self.get_user_info(tokens)
-        if not success:
-            return JsonResponse({"error": user_info}, status=500)
-        return await self.prepare_response(tokens, user_info)
 
     def get_redirect_url(self, need_otp, is_verified):
         if need_otp == True:
@@ -201,31 +160,19 @@ class OAuthView(View):
         except transaction.TransactionManagementError as e:
             return False, str(e)
 
-    # DEPRECATED
-    async def prepare_response(self, tokens, user_info):
-        encoded_jwt = jwt.encode({
-                "access_token": tokens["access_token"],
-                "user_id": user_info["id"],
-                "otp_verified": False,
-            }, JWT_SECRET, algorithm="HS256")
-        otp_verified = await cache.aget(f'otp_passed_{user_info["id"]}', False)
-        return JsonResponse({
-            "jwt": encoded_jwt,
-            "otp_verified": otp_verified,
-            "show_otp_qr": user_info['otp'].is_verified
-        }, status=200)
-
     def set_cache(self, user_data, otp_data, tokens):
         cache_value = {
             'email': user_data.email,
             'login': user_data.login,
-            'usual_full_name': user_data.usual_full_name,
-            'image_link': user_data.image_link,
-            'need_otp': user_data.need_otp,
             'secret': otp_data.secret,
             'is_verified': otp_data.is_verified,
             'access_token': tokens["access_token"],
-            'refresh_token': tokens["refresh_token"]
+            'refresh_token': tokens["refresh_token"],
+            'need_otp': user_data.need_otp,
+
+            # DEPRECATED
+            'usual_full_name': user_data.usual_full_name,
+            'image_link': user_data.image_link,
         }
         cache.set(f'user_data_{user_data.id}', cache_value, TOKEN_EXPIRES)
 
@@ -278,8 +225,9 @@ class QRcodeView(View):
     async def get(self, request, decoded_jwt):
         """
         QRcode에 필요한 secret값을 포함한 URI를 반환하는 함수
+        한 번 OTP인증에 성공한 경우 다시 QR코드를 반환하지 않음
 
-        :header Authorization: 인증을 위한 JWT
+        :cookie jwt: 인증을 위한 JWT
         """
         user_id = decoded_jwt.get("user_id")
         try:
@@ -292,7 +240,6 @@ class QRcodeView(View):
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
 
-    # It check user data twice but still need
     async def get_user_data(self, user_id):
         user_data = await cache.aget(f'user_data_{user_id}')
         if not user_data:
@@ -323,7 +270,7 @@ class OTPView(View):
         cache를 사용하여 저장할 경우 퍼포먼스의 이득을 볼 수 있지만
         데이터의 정합성을 위해서 db를 확인한다
 
-        :header Authorization: 인증을 위한 JWT
+        :cookie jwt: 인증을 위한 JWT
         :body input_password: 사용자가 입력한 OTP
         """
         user_id = decoded_jwt.get("user_id")
@@ -428,6 +375,11 @@ class LoginView(View):
 
 class StatusView(View):
     async def get(self, request):
+        """
+        유저의 인증 상태를 반환하는 함수
+        
+        :cookie jwt: 인증을 위한 JWT
+        """
         encoded_jwt = request.COOKIES.get("jwt")
         if not encoded_jwt:
             return JsonResponse({"error": "No jwt in request"}, status=401)
@@ -446,6 +398,28 @@ class StatusView(View):
             "access_token_valid": True,
             "otp_authenticated": otp_verified
         }, status=200)
+
+
+class UserInfo(View):
+    @token_required
+    async def get(self, request, decoded_jwt):
+        """
+        main 화면에서 보여줄 유저 정보를 반환하는 API
+
+        :cookie jwt: 인증을 위한 JWT
+        """
+        user_id = decoded_jwt.get("user_id")
+        user_info = await cache.aget(f'user_data_{user_id}')
+        if not user_info:
+            return JsonResponse({"error": "Invalid token"}, status=401)
+        data = {
+            'email': user_info['email'],
+            'login': user_info['login'],
+            'usual_full_name': user_info['usual_full_name'],
+            'image_link': user_info['image_link'],
+        }
+        return JsonResponse(data, status=200)
+
 
 
 class Test(View):
