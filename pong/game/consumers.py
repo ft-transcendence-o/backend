@@ -68,7 +68,6 @@ class PongGame:
         self.ball_pos = np.array([0.0, 0.0, 0.0]) #공위치
         self.ball_vec = np.array([0.0, 0.0, 1.0]) #공이 움직이는 방향
         self.ball_rot = np.array([0.0, 0.0, 0.0]) #공의 회전벡터
-        self.angular_vec = np.array([0.0, 0.0, 0.0])
         self.panel1_pos = np.array([0.0, 0.0, 50.0]) #panel1의 초기위치
         self.panel2_pos = np.array([0.0, 0.0, -50.0]) #panel2의 초기위치
         # self.flag = True # 공이 날라가는 방향
@@ -87,11 +86,11 @@ class PongGame:
         self.game_state = "playing"
         self.winner = None
 
+
     def init_game(self):
         self.ball_pos = np.array([0.0, 0.0, 0.0]) #공위치
         self.ball_vec = np.array([0.0, 0.0, 1.0]) #공이 움직이는 방향
         self.ball_rot = np.array([0.0, 0.0, 0.0]) #공의 회전벡터
-        self.angular_vec = np.array([0.0, 0.0, 0.0])
         self.panel1_pos = np.array([0.0, 0.0, 50.0]) #panel1의 초기위치
         self.panel2_pos = np.array([0.0, 0.0, -50.0]) #panel2의 초기위치
 
@@ -119,7 +118,6 @@ class PongGame:
         elif self.key_state[7]:
             self.panel2_pos[0] -= ball_speed
 
-
     def update(self):
         steps = 10
         for i in range(steps):
@@ -133,9 +131,10 @@ class PongGame:
             self.check_collision_with_goal_area()
 
         return (self.game_state, {
-            "ball": self.ball_pos.tolist(),
+            "ball_pos": self.ball_pos.tolist(),
             "panel1": self.panel1_pos.tolist(),
             "panel2": self.panel2_pos.tolist(),
+            "ball_rot": self.ball_rot.tolist(),
         })
 
     # 벽4가지를 순회하며 어느 벽과 충돌했는지 판별하고 부딪힌 벽을 반환
@@ -152,6 +151,7 @@ class PongGame:
     def get_collision_point_with_plane(self, plane):
         distance_to_plane = self.plane_distance_to_point(plane)
         if abs(distance_to_plane) <= 2:
+            self.ball_rot -= plane[0] * 0.01 #여기
             return self.ball_pos - (plane[0] * distance_to_plane)
         return None
 
@@ -162,23 +162,19 @@ class PongGame:
         d = plane[1] # 중심으로부터의 거리
         return abs(self.ball_pos[0] * a + self.ball_pos[1] * b + self.ball_pos[2] * c + d) / math.sqrt(a**2 + b**2 + c**2)
 
-    # 공 벡터 업데이트함수
-    def update_ball_vector(self, collision_plane):
-        dot_product = np.dot(self.ball_vec, collision_plane[0])
-        reflection = collision_plane[0] * dot_product * 2
-        self.ball_vec = self.ball_vec - reflection
-
     # panel이 위치한 평면과 충돌시
     def check_collision_with_goal_area(self):
         if self.ball_pos[2] >= 48: # z좌표가 48이상인경우 #player1쪽 벽과 충돌한경우
             if self.is_ball_in_panel(self.panel1_pos): # x,y 좌표 판정
-                self.handle_panel_collision(self.panel1_plane) # panel1과 충돌한경우
+                self.handle_panel_collision(self.panel1_plane, self.panel1_pos) # panel1과 충돌한경우
             else:
+                print("player2_win")
                 self.player2_win() # panel1이 위치한 면에 충돌한경우
         elif self.ball_pos[2] <= -48:
             if self.is_ball_in_panel(self.panel2_pos):
-                self.handle_panel_collision(self.panel2_plane) # panel2와 충돌한 경우
+                self.handle_panel_collision(self.panel2_plane, self.panel2_pos) # panel2와 충돌한 경우
             else:
+                print("player1_win")
                 self.player1_win()
 
     # 공 중심의 x, y좌표가 panel안에 위치하는지 확인하는 함수
@@ -190,12 +186,47 @@ class PongGame:
         return True
 
     # 판넬과 공이 충돌한 경우
-    def handle_panel_collision(self, panel_plane):
+    def handle_panel_collision(self, panel_plane, panel_pos):
         # 충돌지점 계산
         collision_point = self.get_collision_point_with_plane(panel_plane)
         # 충돌후 공의 좌표를 보정
         self.ball_pos = collision_point + panel_plane[0] * 2
+        self.update_vector_by_panel(panel_plane, panel_pos)
+
+    # 공 벡터 업데이트함수
+    def update_ball_vector(self, collision_plane):
+        dot_product = np.dot(self.ball_vec, collision_plane[0])
+        reflection = collision_plane[0] * dot_product * 2
+        self.ball_vec = self.ball_vec - reflection
+
+    # 판넬과 공이 충돌한경우 ball_vec에 보정
+    def update_vector_by_panel(self, panel_plane, panel_pos):
         self.update_ball_vector(panel_plane)
+        self.update_ball_rotation(panel_plane)
+        self.ball_vec[0] = (2 - (panel_pos[0] - self.ball_pos[0])) / 24
+        self.ball_vec[1] = (2 - (panel_pos[1] - self.ball_pos[1])) / 24
+
+    def update_ball_rotation(self, panel_plane):
+        # 마찰력 또는 저항력을 나타내는 F 값을 적절히 계산
+        F = self.ball_rot * -1
+        
+        # 충돌 모멘트(tau)를 계산
+        tau = np.cross(panel_plane[0], F)
+        
+        # 관성 모멘트 텐서의 역행렬
+        I_inv = np.diag([1 / (1.6)] * 3)
+        
+        # 각속도 변화량 계산
+        delta_w = np.dot(I_inv, tau)
+
+        # 기존의 회전 벡터에 변화를 더함
+        self.ball_rot = self.ball_rot + delta_w
+
+        # 회전 속도를 계산하고 너무 크면 조정
+        spin_speed = np.linalg.norm(self.ball_rot)
+        if spin_speed > 0.1:
+            # 회전 벡터의 크기를 조정하여 안정적인 값 유지
+            self.ball_rot *= 0.1 / spin_speed
 
     def player1_win(self):
         self.ball_vec = np.array([0.0, 0.0, 1.0])
@@ -204,10 +235,7 @@ class PongGame:
         self.player1_score += 1
         if self.player1_score >= GAME_END_SCORE:
             self.game_state = "ended"
-        # result = {
-            # "score": [self.player1_score, self.player2_score],
-        # }
-        # asyncio.create_task(self.send(text_data=json.dumps({"score": result})))
+
 
     def player2_win(self):
         self.ball_vec = np.array([0.0, 0.0, 1.0])
@@ -216,7 +244,4 @@ class PongGame:
         self.player2_score += 1
         if self.player2_score >= GAME_END_SCORE:
             self.game_state = "ended"
-        # result = {
-            # "score": [self.player1_score, self.player2_score],
-        # }
-        # asyncio.create_task(self.send(text_data=json.dumps({"score": result})))
+
