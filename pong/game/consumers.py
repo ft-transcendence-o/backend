@@ -35,8 +35,21 @@ class GameConsumer(AsyncWebsocketConsumer):
                     self.game.process_key_input(self.key_input)
                     self.key_input = None
                 self.game.move_panels()
-                result = self.game.update()
-                await self.send(text_data=json.dumps({"game": result}))
+
+                game_state, game_data = self.game.update()
+                if game_state == "ended":
+                    await self.send(text_data=json.dumps({
+                        "type": "game_over",
+                        "scores": f"{self.player1_score}:{self.player2_score}",
+                        }))
+                else:
+                    await self.send(text_data=json.dumps({
+                        "type": "game_update",
+                        "scores": f"{self.player1_score}:{self.player2_score}",
+                        "game": game_data,
+                        }))
+                    break
+
                 await asyncio.sleep(0.006)
         except asyncio.CancelledError:
             print("CancelledError")
@@ -49,6 +62,7 @@ KEY_MAPPING = {
     "KeyW": 0, "KeyA": 1, "KeyS": 2, "KeyD": 3,
     "ArrowUp": 4, "ArrowDown": 6, "ArrowLeft": 5, "ArrowRight": 7
 }
+GAME_END_SCORE = 3
 
 class PongGame:
     def __init__(self):
@@ -71,6 +85,8 @@ class PongGame:
         self.panel2_plane = (np.array([0, 0, 1]), 50)
         self.player1_score = 0
         self.player2_score = 0
+        self.game_state = "playing"
+        self.winner = None
 
     def init_game(self):
         self.ball_pos = np.array([0.0, 0.0, 0.0]) #공위치
@@ -117,8 +133,7 @@ class PongGame:
                 break
             self.check_collision_with_goal_area()
 
-        # is this tuple?
-        return ({
+        return (self.game_state, {
             "ball": self.ball_pos.tolist(),
             "panel1": self.panel1_pos.tolist(),
             "panel2": self.panel2_pos.tolist(),
@@ -188,9 +203,11 @@ class PongGame:
         self.angular_vec = np.array([0.0, 0.0, 0.0])
         self.ball_pos = np.array([0.0, 0.0, 0.0])
         self.player1_score += 1
-        result = {
-            "score": [self.player1_score, self.player2_score],
-        }
+        if self.player1_score >= GAME_END_SCORE:
+            self.game_state = "ended"
+        # result = {
+            # "score": [self.player1_score, self.player2_score],
+        # }
         # asyncio.create_task(self.send(text_data=json.dumps({"score": result})))
 
     def player2_win(self):
@@ -198,7 +215,9 @@ class PongGame:
         self.angular_vec = np.array([0.0, 0.0, 0.0])
         self.ball_pos = np.array([0.0, 0.0, 0.0])
         self.player2_score += 1
-        result = {
-            "score": [self.player1_score, self.player2_score],
-        }
+        if self.player2_score >= GAME_END_SCORE:
+            self.game_state = "ended"
+        # result = {
+            # "score": [self.player1_score, self.player2_score],
+        # }
         # asyncio.create_task(self.send(text_data=json.dumps({"score": result})))
