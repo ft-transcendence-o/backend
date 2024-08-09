@@ -106,7 +106,7 @@ class OAuthView(View):
 
         :header Authorization: 인증을 위한 JWT
         """
-        user_id = decoded_jwt.get(user_id)
+        user_id = decoded_jwt.get("user_id")
         cache.delete(f'user_data_{user_id}')
         response = JsonResponse({"message": "logout success"})
         response.delete_cookie('jwt')
