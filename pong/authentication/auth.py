@@ -11,7 +11,7 @@ import jwt
 import json
 import logging
 
-from authentication.decorators import token_required, login_required
+from authentication.decorators import token_required, login_required, token_refresh_if_invalid
 from authentication.models import User, OTPSecret
 
 
@@ -421,9 +421,30 @@ class OTPView(View):
         )
 
 
-class Login(View):
+class LoginView(View):
     async def get(self, request):
         return HttpResponseRedirect(AUTH_PAGE)
+
+
+class StatusView(View):
+    async def get(self, request):
+        encoded_jwt = request.COOKIES.get("jwt")
+        if not encoded_jwt:
+            return JsonResponse({"error": "No jwt in request"}, status=401)
+    
+        try:
+            decoded_jwt = jwt.decode(encoded_jwt, JWT_SECRET, algorithms=["HS256"])
+        except:
+            return JsonResponse({"error": "Decoding jwt failed"}, status=401)
+
+        if response := await token_refresh_if_invalid(request, decoded_jwt, user_id):
+            return response
+
+        otp_verified = decoded_jwt.get("otp_verified")
+        return JsonResponse({
+            "access_token": True,
+            "otp_authenticated": otp_verified
+        }, status=200)
 
 
 class Test(View):

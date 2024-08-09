@@ -48,13 +48,8 @@ def auth_decorator_factory(check_otp=False):
             if not user_id:
                 return JsonResponse({"error": "No user id provided"}, status=401)
 
-            user_data = await cache.aget(f'user_data_{user_id}')
-            if not user_data:
-                tokens = await refresh_token(request, user_id)
-                if not tokens:
-                    return JsonResponse({"error": "Need login"}, status=401)
-                await set_refresh_token(user_id, tokens["refresh_token"])
-                return await create_response(request, decoded_jwt, tokens)
+            if response := await token_refresh_if_invalid(request, decoded_jwt, user_id):
+                return response
 
             otp_verified = decoded_jwt.get("otp_verified")
             if check_otp and otp_verified == False:
@@ -73,7 +68,17 @@ def auth_decorator_factory(check_otp=False):
         return wrapper
     return decorator
 
-async def refresh_token(request, user_id):
+async def token_refresh_if_invalid(request, decoded_jwt, user_id):
+    user_data = await cache.aget(f'user_data_{user_id}')
+    if  user_data:
+        return None
+    tokens = await refresh_token(user_id)
+    if not tokens:
+        return JsonResponse({"error": "Need login"}, status=401)
+    await set_refresh_token(user_id, tokens["refresh_token"])
+    return await create_response(request, decoded_jwt, tokens)
+
+async def refresh_token(user_id):
     refresh_token = await get_refresh_token(user_id)
     data = {
         "grant_type": "refresh_token",
