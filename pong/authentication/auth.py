@@ -346,7 +346,7 @@ class OTPView(View):
             await self.update_otp_success(user_id, otp_data)
             return await self.create_success_response(decoded_jwt)
 
-        await self.update_otp_data(user_id, otp_data)
+        await sync_to_async(self.update_otp_data)(user_id, otp_data)
         return self.password_fail_response(otp_data['attempts'])
 
     async def create_success_response(self, decoded_jwt):
@@ -406,9 +406,8 @@ class OTPView(View):
         otp_data['attempts'] = 0
         otp_data['is_locked'] = False
         otp_data['is_verified'] = True
-        return await update_otp_data(user_id, otp_data)
+        return update_otp_data(user_id, otp_data)
 
-    @sync_to_async
     def update_otp_data(self, user_id, data):
         """
         OTP 시도 횟수 및 시간 저장
