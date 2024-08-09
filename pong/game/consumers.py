@@ -26,6 +26,8 @@ class GameConsumer(AsyncWebsocketConsumer):
             self.game.init_game()
             self.start_game()
         else:
+            # TODO: MODIFY FLOW
+            # self.game.proccess_key_input(text_data)
             self.key_input = json.loads(text_data)
 
     async def send_callback(self, data):
