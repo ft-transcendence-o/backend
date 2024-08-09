@@ -69,8 +69,8 @@ class PongGame:
         # panel이 위치한 평면
         self.panel1_plane = (np.array([0, 0, -1]), 50) #(법선벡터, 원점과의 거리)
         self.panel2_plane = (np.array([0, 0, 1]), 50)
-        self.player1Score = 0
-        self.player2Score = 0
+        self.player1_score = 0
+        self.player2_score = 0
 
     def init_game(self):
         self.ball_pos = np.array([0.0, 0.0, 0.0]) #공위치
@@ -115,7 +115,6 @@ class PongGame:
             if collision_plane:
                 self.update_ball_vector(collision_plane)
                 break
-
             self.check_collision_with_goal_area()
 
         # is this tuple?
@@ -185,21 +184,21 @@ class PongGame:
         self.update_ball_vector(panel_plane)
 
     def player1_win(self):
-        self.ball_vec = np.array([0, 0, 0])
-        self.angular_vec = np.array([0, 0, 0.1])
-        self.ball_pos = np.array([0, 0, 0])
+        self.ball_vec = np.array([0.0, 0.0, 1.0])
+        self.angular_vec = np.array([0.0, 0.0, 0.0])
+        self.ball_pos = np.array([0.0, 0.0, 0.0])
         self.player1_score += 1
         result = {
-            "score": [self.player1Score, self.player2Score],
+            "score": [self.player1_score, self.player2_score],
         }
-        asyncio.create_task(self.send(text_data=json.dumps({"score": result})))
+        # asyncio.create_task(self.send(text_data=json.dumps({"score": result})))
 
     def player2_win(self):
-        self.ball_vec = np.array([0, 0, 0])
-        self.angular_vec = np.array([0, 0, 0.1])
-        self.ball_pos = np.array([0, 0, 0])
+        self.ball_vec = np.array([0.0, 0.0, 1.0])
+        self.angular_vec = np.array([0.0, 0.0, 0.0])
+        self.ball_pos = np.array([0.0, 0.0, 0.0])
         self.player2_score += 1
         result = {
-            "score": [self.player1Score, self.player2Score],
+            "score": [self.player1_score, self.player2_score],
         }
-        asyncio.create_task(self.send(text_data=json.dumps({"score": result})))
+        # asyncio.create_task(self.send(text_data=json.dumps({"score": result})))
