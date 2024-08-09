@@ -11,7 +11,11 @@ import jwt
 import json
 import logging
 
-from authentication.decorators import token_required, login_required, token_refresh_if_invalid
+from authentication.decorators import (
+    token_required,
+    login_required,
+    token_refresh_if_invalid,
+)
 from authentication.models import User, OTPSecret
 
 
@@ -32,7 +36,7 @@ logger = logging.getLogger(__name__)
         https://api.intra.42.fr/v2/me
 """
 
-TOKEN_EXPIRES= 10
+TOKEN_EXPIRES = 10
 LOCK_ACCOUNT = 9
 MAX_ATTEMPTS = 5
 API_URL = getenv("API_URL")
@@ -57,6 +61,8 @@ backend 인증 로직
 6. QR code를 사용해 google authenticator 등록
 7. OTP 입력 및 검증
 """
+
+
 class OAuthView(View):
     async def get(self, request):
         """
@@ -66,7 +72,7 @@ class OAuthView(View):
 
         :query code: 42OAuth에서 받음 code값
         """
-        code = request.GET.get('code')
+        code = request.GET.get("code")
         tokens = await self.exchange_code_for_token(code)
         if not tokens:
             return JsonResponse({"error": "Failed to obtain token"}, status=400)
@@ -75,8 +81,12 @@ class OAuthView(View):
         if not success:
             return JsonResponse({"error": user_info}, status=500)
 
-        encoded_jwt = self.create_jwt_token(tokens["access_token"], user_info["user"].id)
-        redirect_url = self.get_redirect_url(user_info["user"].need_otp, user_info["otp"].is_verified)
+        encoded_jwt = self.create_jwt_token(
+            tokens["access_token"], user_info["user"].id
+        )
+        redirect_url = self.get_redirect_url(
+            user_info["user"].need_otp, user_info["otp"].is_verified
+        )
         return self.create_redirect_response(redirect_url, encoded_jwt)
 
     @token_required
@@ -88,9 +98,9 @@ class OAuthView(View):
         :cookie jwt: 인증을 위한 JWT
         """
         user_id = decoded_jwt.get("user_id")
-        cache.delete(f'user_data_{user_id}')
+        cache.delete(f"user_data_{user_id}")
         response = JsonResponse({"message": "logout success"})
-        response.delete_cookie('jwt')
+        response.delete_cookie("jwt")
         return response
 
     def get_redirect_url(self, need_otp, is_verified):
@@ -103,7 +113,7 @@ class OAuthView(View):
             return FRONT_BASE_URL + "/main"
 
     def extract_code(self, request):
-        body = json.loads(request.body.decode('utf-8'))
+        body = json.loads(request.body.decode("utf-8"))
         return body.get("code")
 
     async def exchange_code_for_token(self, code):
@@ -118,13 +128,13 @@ class OAuthView(View):
         }
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.post(f'{API_URL}/oauth/token', data=data) as response:
+                async with session.post(f"{API_URL}/oauth/token", data=data) as response:
                     if response.status != 200:
                         return None
                     response_data = await response.json()
                     return {
                         "access_token": response_data.get("access_token"),
-                        "refresh_token": response_data.get("refresh_token")
+                        "refresh_token": response_data.get("refresh_token"),
                     }
         except aiohttp.ClientError:
             return None
@@ -137,7 +147,7 @@ class OAuthView(View):
         headers = {"Authorization": f'Bearer {tokens["access_token"]}'}
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(f'{API_URL}/v2/me', headers=headers) as response:
+                async with session.get(f"{API_URL}/v2/me", headers=headers) as response:
                     if response.status == 200:
                         data = await response.json()
                         return await self.process_user_data(data, tokens)
@@ -154,7 +164,7 @@ class OAuthView(View):
         try:
             with transaction.atomic():
                 user_data = self.update_or_create_user(data, tokens["refresh_token"])
-                otp_data = self.get_or_create_otp_secret(data['id'])
+                otp_data = self.get_or_create_otp_secret(data["id"])
             self.set_cache(user_data, otp_data, tokens)
             return True, {"user": user_data, "otp": otp_data}
         except transaction.TransactionManagementError as e:
@@ -162,30 +172,29 @@ class OAuthView(View):
 
     def set_cache(self, user_data, otp_data, tokens):
         cache_value = {
-            'email': user_data.email,
-            'login': user_data.login,
-            'secret': otp_data.secret,
-            'is_verified': otp_data.is_verified,
-            'access_token': tokens["access_token"],
-            'refresh_token': tokens["refresh_token"],
-            'need_otp': user_data.need_otp,
-
+            "email": user_data.email,
+            "login": user_data.login,
+            "secret": otp_data.secret,
+            "is_verified": otp_data.is_verified,
+            "access_token": tokens["access_token"],
+            "refresh_token": tokens["refresh_token"],
+            "need_otp": user_data.need_otp,
             # DEPRECATED
-            'usual_full_name': user_data.usual_full_name,
-            'image_link': user_data.image_link,
+            "usual_full_name": user_data.usual_full_name,
+            "image_link": user_data.image_link,
         }
-        cache.set(f'user_data_{user_data.id}', cache_value, TOKEN_EXPIRES)
+        cache.set(f"user_data_{user_data.id}", cache_value, TOKEN_EXPIRES)
 
     def update_or_create_user(self, data, refresh_token):
         user, _ = User.objects.update_or_create(
-            id=data['id'],
+            id=data["id"],
             defaults={
-                'email': data['email'],
-                'login': data['login'],
-                'usual_full_name': data['usual_full_name'],
-                'image_link': data['image']['link'],
-                'refresh_token': refresh_token
-            }
+                "email": data["email"],
+                "login": data["login"],
+                "usual_full_name": data["usual_full_name"],
+                "image_link": data["image"]["link"],
+                "refresh_token": refresh_token,
+            },
         )
         return user
 
@@ -193,30 +202,28 @@ class OAuthView(View):
         otp_secret, _ = OTPSecret.objects.get_or_create(
             user_id=user_id,
             defaults={
-                'secret': pyotp.random_base32(),
-                'attempts': 0,
-                'last_attempt': None,
-                'is_locked': False,
-            }
+                "secret": pyotp.random_base32(),
+                "attempts": 0,
+                "last_attempt": None,
+                "is_locked": False,
+            },
         )
         return otp_secret
 
     def create_jwt_token(self, access_token, user_id):
-        return jwt.encode({
-            "access_token": access_token,
-            "user_id": user_id,
-            "otp_verified": False,
-        }, JWT_SECRET, algorithm="HS256")
+        return jwt.encode(
+            {
+                "access_token": access_token,
+                "user_id": user_id,
+                "otp_verified": False,
+            },
+            JWT_SECRET,
+            algorithm="HS256",
+        )
 
     def create_redirect_response(self, redirect_url, jwt):
         response = HttpResponseRedirect(redirect_url)
-        response.set_cookie(
-            "jwt",
-            jwt,
-            httponly=True,
-            secure=True,
-            samesite='Lax'
-        )
+        response.set_cookie("jwt", jwt, httponly=True, secure=True, samesite="Lax")
         return response
 
 
@@ -241,21 +248,20 @@ class QRcodeView(View):
             return JsonResponse({"error": str(e)}, status=400)
 
     async def get_user_data(self, user_id):
-        user_data = await cache.aget(f'user_data_{user_id}')
+        user_data = await cache.aget(f"user_data_{user_id}")
         if not user_data:
             raise Exception("User data not found")
         return user_data
 
     def get_user_secret(self, user_data):
-        secret = user_data.get('secret')
+        secret = user_data.get("secret")
         if not secret:
             raise Exception("User secret not found")
         return secret
 
     def generate_otp_uri(self, user_data, secret):
         return pyotp.totp.TOTP(secret).provisioning_uri(
-            name=user_data['email'],
-            issuer_name="pong_game"
+            name=user_data["email"], issuer_name="pong_game"
         )
 
 
@@ -282,33 +288,38 @@ class OTPView(View):
         if self.is_account_locked(otp_data, now):
             return JsonResponse({"error": "Account is locked. try later"}, status=403)
 
-        otp_data['attempts'] += 1
-        otp_data['last_attempt'] = now
-        if otp_data['attempts'] >= MAX_ATTEMPTS:
-            otp_data['is_locked'] = True
+        otp_data["attempts"] += 1
+        otp_data["last_attempt"] = now
+        if otp_data["attempts"] >= MAX_ATTEMPTS:
+            otp_data["is_locked"] = True
             await self.update_otp_data(user_id, otp_data)
-            return JsonResponse({"error": "Maximum number of attempts exceeded. Please try again after 15 minutes."}, status=403)
+            return JsonResponse(
+                {
+                    "error": "Maximum number of attempts exceeded. Please try again after 15 minutes."
+                },
+                status=403,
+            )
 
-        if self.verify_otp(request, otp_data['secret']):
+        if self.verify_otp(request, otp_data["secret"]):
             await self.update_otp_success(user_id, otp_data)
             return await self.create_success_response(decoded_jwt)
 
         await sync_to_async(self.update_otp_data)(user_id, otp_data)
-        return self.password_fail_response(otp_data['attempts'])
+        return self.password_fail_response(otp_data["attempts"])
 
     async def create_success_response(self, decoded_jwt):
         response = JsonResponse({"success": "OTP authentication verified"})
-        encoded_jwt = jwt.encode({
-            "access_token": decoded_jwt.get("access_token"),
-            "user_id": decoded_jwt.get("user_id"),
-            "otp_verified": True,
-        }, JWT_SECRET, algorithm="HS256")
+        encoded_jwt = jwt.encode(
+            {
+                "access_token": decoded_jwt.get("access_token"),
+                "user_id": decoded_jwt.get("user_id"),
+                "otp_verified": True,
+            },
+            JWT_SECRET,
+            algorithm="HS256",
+        )
         response.set_cookie(
-            "jwt",
-            encoded_jwt,
-            httponly=True,
-            secure=True,
-            samesite="Lax"
+            "jwt", encoded_jwt, httponly=True, secure=True, samesite="Lax"
         )
         return response
 
@@ -317,11 +328,11 @@ class OTPView(View):
         try:
             otp_secret = OTPSecret.objects.get(user_id=user_id)
             data = {
-                'secret': otp_secret.secret,
-                'attempts': otp_secret.attempts,
-                'last_attempt': otp_secret.last_attempt,
-                'is_locked': otp_secret.is_locked,
-                'is_verified': otp_secret.is_verified
+                "secret": otp_secret.secret,
+                "attempts": otp_secret.attempts,
+                "last_attempt": otp_secret.last_attempt,
+                "is_locked": otp_secret.is_locked,
+                "is_verified": otp_secret.is_verified,
             }
         except OTPSecret.DoesNotExist:
             return None
@@ -331,28 +342,33 @@ class OTPView(View):
         return JsonResponse(
             {
                 "error": "Incorrect password.",
-                "remain_attempts": MAX_ATTEMPTS - attempts
-            }, status=400)
+                "remain_attempts": MAX_ATTEMPTS - attempts,
+            },
+            status=400,
+        )
 
     def is_account_locked(self, otp_data, now):
-        if otp_data['is_locked']:
-            if otp_data['last_attempt'] and (now - otp_data['last_attempt']).total_seconds() > LOCK_ACCOUNT:
-                otp_data['is_locked'] = False
-                otp_data['attempts'] = 0
+        if otp_data["is_locked"]:
+            if (
+                otp_data["last_attempt"]
+                and (now - otp_data["last_attempt"]).total_seconds() > LOCK_ACCOUNT
+            ):
+                otp_data["is_locked"] = False
+                otp_data["attempts"] = 0
                 return False
             return True
         return False
 
     def verify_otp(self, request, secret):
-        body = json.loads(request.body.decode('utf-8'))
+        body = json.loads(request.body.decode("utf-8"))
         otp_code = body.get("input_password")
         return pyotp.TOTP(secret).verify(otp_code)
 
     @sync_to_async
     def update_otp_success(self, user_id, otp_data):
-        otp_data['attempts'] = 0
-        otp_data['is_locked'] = False
-        otp_data['is_verified'] = True
+        otp_data["attempts"] = 0
+        otp_data["is_locked"] = False
+        otp_data["is_verified"] = True
         return self.update_otp_data(user_id, otp_data)
 
     def update_otp_data(self, user_id, data):
@@ -361,10 +377,10 @@ class OTPView(View):
         5회 이상 시도 시 계정 잠금 및 초기화 시간 900초 소요
         """
         return OTPSecret.objects.filter(user_id=user_id).update(
-            attempts=data['attempts'],
-            last_attempt=data['last_attempt'],
-            is_locked=data['is_locked'],
-            is_verified=data['is_verified']
+            attempts=data["attempts"],
+            last_attempt=data["last_attempt"],
+            is_locked=data["is_locked"],
+            is_verified=data["is_verified"],
         )
 
 
@@ -377,13 +393,13 @@ class StatusView(View):
     async def get(self, request):
         """
         유저의 인증 상태를 반환하는 함수
-        
+
         :cookie jwt: 인증을 위한 JWT
         """
         encoded_jwt = request.COOKIES.get("jwt")
         if not encoded_jwt:
             return JsonResponse({"error": "No jwt in request"}, status=401)
-    
+
         try:
             decoded_jwt = jwt.decode(encoded_jwt, JWT_SECRET, algorithms=["HS256"])
         except:
@@ -394,10 +410,9 @@ class StatusView(View):
             return response
 
         otp_verified = decoded_jwt.get("otp_verified")
-        return JsonResponse({
-            "access_token_valid": True,
-            "otp_authenticated": otp_verified
-        }, status=200)
+        return JsonResponse(
+            {"access_token_valid": True, "otp_authenticated": otp_verified}, status=200
+        )
 
 
 class UserInfo(View):
@@ -409,22 +424,21 @@ class UserInfo(View):
         :cookie jwt: 인증을 위한 JWT
         """
         user_id = decoded_jwt.get("user_id")
-        user_info = await cache.aget(f'user_data_{user_id}')
+        user_info = await cache.aget(f"user_data_{user_id}")
         if not user_info:
             return JsonResponse({"error": "Invalid token"}, status=401)
         data = {
-            'email': user_info['email'],
-            'login': user_info['login'],
-            'usual_full_name': user_info['usual_full_name'],
-            'image_link': user_info['image_link'],
+            "email": user_info["email"],
+            "login": user_info["login"],
+            "usual_full_name": user_info["usual_full_name"],
+            "image_link": user_info["image_link"],
         }
         return JsonResponse(data, status=200)
 
 
-
 class Test(View):
     async def get(self, request):
-        refresh_token = request.GET.get('refresh_token')
+        refresh_token = request.GET.get("refresh_token")
         return await self.exchange_code_for_token(refresh_token)
 
     async def exchange_code_for_token(self, refresh_token):
@@ -439,7 +453,7 @@ class Test(View):
             "state": STATE,
         }
         async with aiohttp.ClientSession() as session:
-            async with session.post(f'{API_URL}/oauth/token', data=data) as response:
+            async with session.post(f"{API_URL}/oauth/token", data=data) as response:
                 response_data = await response.json()
                 if response.status != 200:
                     return JsonResponse(response_data)
