@@ -343,7 +343,7 @@ class OTPView(View):
             return JsonResponse({"error": "Maximum number of attempts exceeded. Please try again after 15 minutes."}, status=403)
 
         if self.verify_otp(request, otp_data['secret']):
-            await self.update_otp_success(otp_data, user_id)
+            await self.update_otp_success(user_id, otp_data)
             return await self.create_success_response(decoded_jwt)
 
         await self.update_otp_data(user_id, otp_data)
@@ -402,18 +402,12 @@ class OTPView(View):
         return pyotp.TOTP(secret).verify(otp_code)
 
     @sync_to_async
-    def update_otp_success(self, otp_data, user_id):
+    def update_otp_success(self, user_id, otp_data):
         otp_data['attempts'] = 0
         otp_data['is_locked'] = False
         otp_data['is_verified'] = True
-        return OTPSecret.objects.filter(user_id=user_id).update(
-            attempts=otp_data['attempts'],
-            last_attempt=otp_data['last_attempt'],
-            is_locked=otp_data['is_locked'],
-            is_verified=otp_data['is_verified']
-        )
+        return await update_otp_data(user_id, otp_data)
 
-    # TODO: it can be change by function sync_to_async(func)
     @sync_to_async
     def update_otp_data(self, user_id, data):
         """
