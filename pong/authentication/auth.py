@@ -435,7 +435,7 @@ class UserInfo(View):
         }
         return JsonResponse(data, status=200)
 
-
+# TODO: DELETE THIS, JUST FOR TEST
 class Test(View):
     async def get(self, request):
         refresh_token = request.GET.get("refresh_token")
