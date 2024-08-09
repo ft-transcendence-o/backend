@@ -43,7 +43,7 @@ backend 인증 로직
 6. QR code를 사용해 google authenticator 등록
 7. OTP 입력 및 검증
 """
-TOKEN_EXPIRES= 7200
+TOKEN_EXPIRES= 10
 LOCK_ACCOUNT = 9
 MAX_ATTEMPTS = 5
 API_URL = getenv("API_URL")
