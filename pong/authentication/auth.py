@@ -36,8 +36,8 @@ logger = logging.getLogger(__name__)
         https://api.intra.42.fr/v2/me
 """
 
-TOKEN_EXPIRES = 10
-LOCK_ACCOUNT = 9
+TOKEN_EXPIRES = 7000
+LOCK_ACCOUNT = 900
 MAX_ATTEMPTS = 5
 API_URL = getenv("API_URL")
 JWT_SECRET = getenv("JWT_SECRET")
