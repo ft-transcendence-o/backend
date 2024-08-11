@@ -35,6 +35,7 @@ chars = (
 )
 SECRET_KEY = "".join([random.SystemRandom().choice(chars) for i in range(50)])
 
+SESSION_ENGINE = "django.contrib.sessions.backends.cache" 
 
 INSTALLED_APPS = [
     # "Make sure "daphne" is at the top
