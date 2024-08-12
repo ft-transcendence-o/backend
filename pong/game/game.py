@@ -93,6 +93,21 @@ class GameView(View):
 
 class TournamentView(View):
     @login_required
+    async def get(self, request, decoded_jwt):
+        """
+        대진표에서 필요한 정보들을 반환
+        
+        :cookie jwt: 인증을 위한 JWT
+        """
+        session_data = request.session.get("game_info_t", {})
+        data = {
+            "players_name": session_data.get("players_name", ['player1', 'player2', 'player3', 'player4']),
+            "win_history": session_data.get("win_history", []),
+            "game_round": session_data.get("game_round", 1),
+        }
+        return JsonResponse(data)
+
+    @login_required
     async def post(self, request, decoded_jwt):
         user_id = decoded_jwt.get("user_id")
         try:
