@@ -53,6 +53,8 @@ def auth_decorator_factory(check_otp=False):
             if response := await token_refresh_if_invalid(request, decoded_jwt, user_id):
                 return response
 
+            # TODO: duplicate in token_refresh_blah()
+            user_data = await cache.aget(f"user_data_{user_id}")
             otp_verified = decoded_jwt.get("otp_verified")
             if check_otp and otp_verified == False:
                 return JsonResponse(
