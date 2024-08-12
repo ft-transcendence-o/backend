@@ -126,7 +126,7 @@ class TournamentView(View):
             'players_name': players_name,
             'left_score': 0,
             'right_score': 0,
-            'game_mode': "tournament"
+            'game_mode': "tournament",
             'game_round': 1,
             'win_history': [],
         }

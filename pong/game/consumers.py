@@ -28,13 +28,15 @@ class GameConsumer(AsyncWebsocketConsumer):
             self.game_task.cancel()
         # TODO db 작업 및 세션 정리
         self.save_game_state()
+        self.scope["session"].save()
+        print(f"set_session_data: {self.session_data}")
         # await self.cleanup_resources()
 
     def save_game_state(self):
         if self.mode == "tournament":
-            request.session['game_info_t'] = self.session_data
+            self.scope["session"]['game_info_t'] = self.session_data
         else:
-            request.session['game_info_n'] = self.session_data
+            self.scope["session"]['game_info_n'] = self.session_data
 
     async def receive(self, text_data):
         if text_data == "start":
@@ -71,9 +73,9 @@ class GameConsumer(AsyncWebsocketConsumer):
 
     def get_session_data(self):
         if self.mode == 'tournament':
-            game_info = request.session.get('game_info_t', {})
+            game_info = self.scope["session"].get('game_info_t', {})
         else:
-            game_info = request.session.get('game_info_n', {})
+            game_info = self.scope["session"].get('game_info_n', {})
         
         context = {
             'players_name': game_info.get('players_name', ['player1', 'player2', 'player3', 'player4']),
