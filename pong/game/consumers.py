@@ -76,7 +76,7 @@ class GameConsumer(AsyncWebsocketConsumer):
             game_info = request.session.get('game_info_n', {})
         
         context = {
-            'username': game_info.get('username', ['player1', 'player2', 'player3', 'player4']),
+            'players_name': game_info.get('players_name', ['player1', 'player2', 'player3', 'player4']),
             'left_score': game_info.get('left_score', 0),
             'right_score': game_info.get('right_score', 0),
             'game_mode': game_info.get('game_mode', 'normal'),
@@ -86,7 +86,7 @@ class GameConsumer(AsyncWebsocketConsumer):
         return context
 
     def get_players_name(self):
-        name_list = self.session_data['username']
+        name_list = self.session_data['players_name']
         game_round = self.session_data['game_round']
         if game_round == 1:
             return name_list[0], name_list[1]
@@ -323,7 +323,7 @@ class PongGame:
     def set_game_ended(self, winner):
         self.game_state = "ended"
         game_round = self.session_data['game_round']
-        players_name = self.session_data['username']
+        players_name = self.session_data['players_name']
         if self.game_mode == "tournament":
             self.session_data['scores'] = '0:0'
             if game_round == 1 and winner == "left":
