@@ -161,21 +161,29 @@ class PongGame:
     def move_panels(self):
         ball_speed = 0.2
         if self.key_state[0]:
-            self.panel1_pos[1] += ball_speed
+            self.panel1_pos[1] = self.clamp_panel_pos(self.panel1_pos[1] + ball_speed)
         elif self.key_state[2]:
-            self.panel1_pos[1] -= ball_speed
+            self.panel1_pos[1] = self.clamp_panel_pos(self.panel1_pos[1] - ball_speed)
         if self.key_state[1]:
-            self.panel1_pos[0] -= ball_speed
+            self.panel1_pos[0] = self.clamp_panel_pos(self.panel1_pos[0] - ball_speed)
         elif self.key_state[3]:
-            self.panel1_pos[0] += ball_speed
+            self.panel1_pos[0] = self.clamp_panel_pos(self.panel1_pos[0] + ball_speed)
         if self.key_state[4]:
-            self.panel2_pos[1] += ball_speed
+            self.panel2_pos[1] = self.clamp_panel_pos(self.panel2_pos[1] + ball_speed)
         elif self.key_state[6]:
-            self.panel2_pos[1] -= ball_speed
+            self.panel2_pos[1] = self.clamp_panel_pos(self.panel2_pos[1] - ball_speed)
         if self.key_state[5]:
-            self.panel2_pos[0] += ball_speed
+            self.panel2_pos[0] = self.clamp_panel_pos(self.panel2_pos[0] + ball_speed)
         elif self.key_state[7]:
-            self.panel2_pos[0] -= ball_speed
+            self.panel2_pos[0] = self.clamp_panel_pos(self.panel2_pos[0] - ball_speed)
+
+    def clamp_panel_pos(self, pos):
+        if abs(pos) > 7:
+            if pos < -7:
+                return -7
+            elif pos > 7:
+                return 7
+        return pos
 
     async def update(self):
         steps = 10
@@ -272,28 +280,28 @@ class PongGame:
         self.update_ball_rotation(panel_plane)
         self.ball_vec[0] = (2 - (panel_pos[0] - self.ball_pos[0])) / 24
         self.ball_vec[1] = (2 - (panel_pos[1] - self.ball_pos[1])) / 24
+        self.ball_vec[2] += panel_plane[0][2] * 0.04
 
     def update_ball_rotation(self, panel_plane):
-        # 마찰력 또는 저항력을 나타내는 F 값을 적절히 계산
-        F = self.ball_rot * -1
-
-        # 충돌 모멘트(tau)를 계산
-        tau = np.cross(panel_plane[0], F)
-
-        # 관성 모멘트 텐서의 역행렬
-        I_inv = np.diag([1 / (1.6)] * 3)
-
-        # 각속도 변화량 계산
-        delta_w = np.dot(I_inv, tau)
-
-        # 기존의 회전 벡터에 변화를 더함
-        self.ball_rot = self.ball_rot + delta_w
-
-        # 회전 속도를 계산하고 너무 크면 조정
-        spin_speed = np.linalg.norm(self.ball_rot)
-        if spin_speed > 0.1:
-            # 회전 벡터의 크기를 조정하여 안정적인 값 유지
-            self.ball_rot *= 0.1 / spin_speed
+        # 구름 마찰력을 계산
+        F = -self.ball_rot
+        
+        # 마찰력이 회전을 감속시키는 방향으로 작용하도록 설정
+        friction_torque = -self.ball_rot / np.linalg.norm(self.ball_rot) * F
+        
+        # 관성 모멘트 (구의 경우)
+        mass = 4 #  # 공의 질량
+        radius = 2  # 공의 반지름
+        inertia = (2/5) * 4 * 4
+        
+        # 각가속도 계산
+        angular_acceleration = friction_torque / inertia
+        
+        # 회전 속도 업데이트
+        self.ball_rot += angular_acceleration * 0.1  # delta_time은 시간 간격
+        
+        # 감쇠 항을 추가하여 미세한 감속 효과 부여
+        self.ball_rot *= 0.5
 
     async def player1_win(self):
         self.ball_vec = np.array([0.0, 0.0, 1.0])
