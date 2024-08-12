@@ -89,7 +89,7 @@ class OAuthView(View):
         )
         return self.create_redirect_response(redirect_url, encoded_jwt)
 
-    @token_required
+    @login_required
     async def delete(self, request, decoded_jwt):
         """
         cache에 저장된 유저 정보 및 OTP패스 정보 폐기
