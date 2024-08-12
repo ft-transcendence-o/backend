@@ -59,8 +59,8 @@ class GameConsumer(AsyncWebsocketConsumer):
     async def game_loop(self):
         try:
             while True:
-                if self.pause == True:
-                    continue
+                while self.pause:
+                    await asyncio.sleep(0.1)
                 if self.key_input:
                     self.game.process_key_input(self.key_input)
                     self.key_input = None
