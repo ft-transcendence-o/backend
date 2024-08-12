@@ -142,7 +142,7 @@ class PongGame:
         self.game_state = "playing"
         self.winner = None
         self.session_data = session_data
-        self.mode = session_data.get('game_mode', 'normal')
+        self.game_mode = session_data.get('game_mode', 'normal')
         self.player1_score = session_data.get('left_score')
         self.player2_score = session_data.get('right_score')
 
