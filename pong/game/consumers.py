@@ -12,6 +12,7 @@ class GameConsumer(AsyncWebsocketConsumer):
         await self.accept()
         self.game_task = None
         self.key_input = None
+        self.pause = False
         self.mode = self.scope['url_route']['kwargs']['mode']
         self.session_data = self.get_session_data()
         await self.send(text_data=json.dumps({
@@ -39,6 +40,10 @@ class GameConsumer(AsyncWebsocketConsumer):
         if text_data == "start":
             # self.game.init_game()
             self.start_game()
+        elif text_data == "pause":
+            self.pause = True
+        elif text_data == "resume":
+            self.pause = False
         else:
             # TODO: MODIFY FLOW
             # self.game.proccess_key_input(text_data)
@@ -50,6 +55,8 @@ class GameConsumer(AsyncWebsocketConsumer):
     async def game_loop(self):
         try:
             while True:
+                if self.pause == True:
+                    continue
                 if self.key_input:
                     self.game.process_key_input(self.key_input)
                     self.key_input = None
