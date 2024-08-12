@@ -416,7 +416,7 @@ class StatusView(View):
 
 
 class UserInfo(View):
-    @token_required
+    @login_required
     async def get(self, request, decoded_jwt):
         """
         main 화면에서 보여줄 유저 정보를 반환하는 API
