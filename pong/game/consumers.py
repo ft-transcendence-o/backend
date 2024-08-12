@@ -5,6 +5,7 @@ import asyncio
 import math
 
 from channels.generic.websocket import AsyncWebsocketConsumer
+from asgiref.sync import sync_to_async
 
 
 class GameConsumer(AsyncWebsocketConsumer):
@@ -14,7 +15,8 @@ class GameConsumer(AsyncWebsocketConsumer):
         self.key_input = None
         self.pause = False
         self.mode = self.scope['url_route']['kwargs']['mode']
-        self.session_data = self.get_session_data()
+        self.session_data = await self.get_session_data()
+        print(f"get_session_data: {self.session_data}")
         await self.send(text_data=json.dumps({
             "type": "init_data",
             "left_score": self.session_data['left_score'],
@@ -71,7 +73,9 @@ class GameConsumer(AsyncWebsocketConsumer):
     def start_game(self):
         self.game_task = asyncio.create_task(self.game_loop())
 
-    def get_session_data(self):
+    async def get_session_data(self):
+        s = await sync_to_async ( self.scope["session"].load) ()
+        print(s)
         if self.mode == 'tournament':
             game_info = self.scope["session"].get('game_info_t', {})
         else:
