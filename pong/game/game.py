@@ -109,42 +109,69 @@ class TournamentView(View):
 
     @login_required
     async def post(self, request, decoded_jwt):
-        user_id = decoded_jwt.get("user_id")
+        """
+        토너먼트 유저 이름을 받아온다
+        
+        :cookie jwt: 인증을 위한 JWT
+        :body players_name: 4명의 유저 이름을 담은 리스트
+        """
         try:
-            data = json.loads(request.body)
-            tournament_errors = {}
-            for i in range(1, 4):
-                game_key = f"game{i}"
-                if game_key not in data:
-                    tournament_errors[game_key] = f"{game_key} is required."
-                else:
-                    game_errors = validate_game(data[game_key], "TOURNAMENT")
-                    if game_errors:
-                        tournament_errors[game_key] = game_errors
-
-            if tournament_errors:
-                return JsonResponse({"errors": tournament_errors}, status=400)
-
-            tournament = await sync_to_async(Tournament.objects.create)(user_id=user_id)
-            for i in range(1, 4):
-                game_key = f"game{i}"
-                game_data = data[game_key]
-                game = await sync_to_async(Game.objects.create)(
-                    user_id=user_id,
-                    tournament_id=tournament.id,
-                    player1_nick=game_data["player1Nick"],
-                    player2_nick=game_data["player2Nick"],
-                    player1_score=game_data["player1Score"],
-                    player2_score=game_data["player2Score"],
-                    mode=game_data["mode"],
-                )
-                setattr(tournament, game_key, game)
-            await sync_to_async(tournament.save)()
-            return JsonResponse(
-                {"status": "Tournament created successfully", "id": tournament.id}, status=201
-            )
+            body = json.loads(request.body.decode("utf-8"))
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON"}, status=400)
-        except Exception as e:
-            logger.error(f"error: {str(e)}")
-            return JsonResponse({"error": str(e)}, status=400)
+        
+        players_name = body.get("players_name", ['player1', 'player2', 'player3', 'player4'])
+        del request.session["game_info_t"]
+        request.session["game_info_t"] = {
+            'players_name': players_name,
+            'left_score': 0,
+            'right_score': 0,
+            'game_mode': "tournament"
+            'game_round': 1,
+            'win_history': [],
+        }
+        return JsonResponse({"message": "success set players name"})
+
+
+
+    # @login_required
+    # async def post(self, request, decoded_jwt):
+    #     user_id = decoded_jwt.get("user_id")
+    #     try:
+    #         data = json.loads(request.body)
+    #         tournament_errors = {}
+    #         for i in range(1, 4):
+    #             game_key = f"game{i}"
+    #             if game_key not in data:
+    #                 tournament_errors[game_key] = f"{game_key} is required."
+    #             else:
+    #                 game_errors = validate_game(data[game_key], "TOURNAMENT")
+    #                 if game_errors:
+    #                     tournament_errors[game_key] = game_errors
+
+    #         if tournament_errors:
+    #             return JsonResponse({"errors": tournament_errors}, status=400)
+
+    #         tournament = await sync_to_async(Tournament.objects.create)(user_id=user_id)
+    #         for i in range(1, 4):
+    #             game_key = f"game{i}"
+    #             game_data = data[game_key]
+    #             game = await sync_to_async(Game.objects.create)(
+    #                 user_id=user_id,
+    #                 tournament_id=tournament.id,
+    #                 player1_nick=game_data["player1Nick"],
+    #                 player2_nick=game_data["player2Nick"],
+    #                 player1_score=game_data["player1Score"],
+    #                 player2_score=game_data["player2Score"],
+    #                 mode=game_data["mode"],
+    #             )
+    #             setattr(tournament, game_key, game)
+    #         await sync_to_async(tournament.save)()
+    #         return JsonResponse(
+    #             {"status": "Tournament created successfully", "id": tournament.id}, status=201
+    #         )
+    #     except json.JSONDecodeError:
+    #         return JsonResponse({"error": "Invalid JSON"}, status=400)
+    #     except Exception as e:
+    #         logger.error(f"error: {str(e)}")
+    #         return JsonResponse({"error": str(e)}, status=400)
