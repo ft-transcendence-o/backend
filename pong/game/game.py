@@ -97,12 +97,14 @@ class TournamentView(View):
     async def get(self, request, decoded_jwt):
         """
         대진표에서 필요한 정보들을 반환
-        
+
         :cookie jwt: 인증을 위한 JWT
         """
         session_data = request.session.get("game_info_t", {})
         data = {
-            "players_name": session_data.get("players_name", ['player1', 'player2', 'player3', 'player4']),
+            "players_name": session_data.get(
+                "players_name", ["player1", "player2", "player3", "player4"]
+            ),
             "win_history": session_data.get("win_history", []),
             "game_round": session_data.get("game_round", 1),
         }
@@ -112,7 +114,7 @@ class TournamentView(View):
     async def post(self, request, decoded_jwt):
         """
         토너먼트 유저 이름을 받아온다
-        
+
         :cookie jwt: 인증을 위한 JWT
         :body players_name: 4명의 유저 이름을 담은 리스트
         """
@@ -120,17 +122,18 @@ class TournamentView(View):
             body = json.loads(request.body.decode("utf-8"))
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON"}, status=400)
-        
-        players_name = body.get("players_name", ['player1', 'player2', 'player3', 'player4'])
+
+        players_name = body.get("players_name", ["player1", "player2", "player3", "player4"])
         session_data = await cache.aget(f"session_data_{user_id}", {})
         return JsonResponse({"message": "success set players name"})
+
 
 class SessionView(View):
     @login_required
     async def get(self, request, decoded_jwt):
         """
         캐시에 저장된 세션 정보 반환
-        
+
         :query mode: 게임 모드 토너먼트 및 일반
         :cookie jwt: 인증을 위한 JWT
         """
@@ -140,7 +143,9 @@ class SessionView(View):
             mode = "normal"
         session_data = await cache.aget(f"session_data_{mode}_{user_id}", {})
         data = {
-            "players_name": session_data.get("players_name", ['player1', 'player2', 'player3', 'player4']),
+            "players_name": session_data.get(
+                "players_name", ["player1", "player2", "player3", "player4"]
+            ),
             "win_history": session_data.get("win_history", []),
             "game_round": session_data.get("game_round", 1),
             "left_score": session_data.get("left_score", 0),
@@ -153,7 +158,7 @@ class SessionView(View):
         """
         tournament 플레이어 이름을 cache에 저장한 뒤
         불러와서 사용
-        
+
         :body players_name: 사용자 이름 리스트
         :cookie jwt: 인증을 위한 JWT
         """
@@ -163,7 +168,7 @@ class SessionView(View):
             return JsonResponse({"error": "Invalid JSON"}, status=400)
 
         user_id = decoded_jwt.get("user_id")
-        players_name = body.get("players_name", ['player1', 'player2', 'player3', 'player4'])
+        players_name = body.get("players_name", ["player1", "player2", "player3", "player4"])
         data = {
             "players_name": players_name,
             "win_history": [],
@@ -181,7 +186,7 @@ class TestView(View):
         """
         tournament 플레이어 이름을 cache에 저장한 뒤
         불러와서 사용
-        
+
         :body players_name: 사용자 이름 리스트
         :cookie jwt: 인증을 위한 JWT
         """
@@ -191,7 +196,7 @@ class TestView(View):
             return JsonResponse({"error": "Invalid JSON"}, status=400)
 
         user_id = decoded_jwt.get("user_id")
-        players_name = body.get("players_name", ['player1', 'player2', 'player3', 'player4'])
+        players_name = body.get("players_name", ["player1", "player2", "player3", "player4"])
         win_history = body.get("win_history", [])
         game_round = body.get("game_round", 1)
         left_score = body.get("left_score", 0)

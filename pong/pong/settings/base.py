@@ -60,7 +60,7 @@ ASGI_APPLICATION = "pong.asgi.application"
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = 'Asia/Seoul'
+TIME_ZONE = "Asia/Seoul"
 
 USE_TZ = False
 

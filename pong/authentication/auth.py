@@ -81,9 +81,7 @@ class OAuthView(View):
         if not success:
             return JsonResponse({"error": user_info}, status=500)
 
-        encoded_jwt = self.create_jwt_token(
-            tokens["access_token"], user_info["user"].id
-        )
+        encoded_jwt = self.create_jwt_token(tokens["access_token"], user_info["user"].id)
         redirect_url = self.get_redirect_url(
             user_info["user"].need_otp, user_info["otp"].is_verified
         )
@@ -318,9 +316,7 @@ class OTPView(View):
             JWT_SECRET,
             algorithm="HS256",
         )
-        response.set_cookie(
-            "jwt", encoded_jwt, httponly=True, secure=True, samesite="Lax"
-        )
+        response.set_cookie("jwt", encoded_jwt, httponly=True, secure=True, samesite="Lax")
         return response
 
     @sync_to_async
@@ -434,6 +430,7 @@ class UserInfo(View):
             "image_link": user_info["image_link"],
         }
         return JsonResponse(data, status=200)
+
 
 # TODO: DELETE THIS, JUST FOR TEST
 class Test(View):
