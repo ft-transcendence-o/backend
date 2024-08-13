@@ -195,10 +195,10 @@ class TestView(View):
         right_score = body.get("right_score", 0)
         data = {
             "players_name": players_name,
-            "win_history": [],
-            "game_round": 1,
-            "left_score": 0,
-            "right_score": 0,
+            "win_history": win_history,
+            "game_round": game_round,
+            "left_score": left_score,
+            "right_score": right_score,
         }
         cache.set(f"session_data_tournament_{user_id}", data, 500)
         return JsonResponse({"message": "Set tournament session success"})
