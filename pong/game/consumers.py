@@ -125,6 +125,7 @@ class PongGame:
         # panel이 위치한 평면
         self.panel1_plane = (np.array([0, 0, -1]), 50)  # (법선벡터, 원점과의 거리)
         self.panel2_plane = (np.array([0, 0, 1]), 50)
+        # TODO: Unused variable
         self.game_state = "playing"
         self.winner = None
         self.session_data = session_data
@@ -297,7 +298,7 @@ class PongGame:
         self.session_data['left_score'] += 1
         await self.send_score_callback()
         if self.player1_score >= GAME_END_SCORE:
-            self.set_game_ended('left')
+            await self.set_game_ended('left')
 
     async def player2_win(self):
         self.ball_vec = np.array([0.0, 0.0, 1.0])
@@ -307,7 +308,7 @@ class PongGame:
         self.session_data['right_score'] += 1
         await self.send_score_callback()
         if self.player2_score >= GAME_END_SCORE:
-            self.set_game_ended('right')
+            await self.set_game_ended('right')
 
     async def send_score_callback(self):
         await self.send_callback(
@@ -320,18 +321,19 @@ class PongGame:
             }
         )
 
-    def set_game_ended(self, winner):
+    async def set_game_ended(self, winner):
+        # TODO: Unused variable
         self.game_state = "ended"
+        await self.send_callback({"type": "game_end"})
         game_round = self.session_data['game_round']
-        players_name = self.session_data['players_name']
+        win_history = self.session_data['win_history']
         if self.game_mode == "tournament":
-            self.session_data['scores'] = '0:0'
             if game_round == 1 and winner == "left":
-                self.win_history.append(players_name[0])
+                win_history.append(0)
             elif game_round == 1 and winner == "right":
-                self.win_history.append(players_name[1])
+                win_history.append(1)
             elif game_round == 2 and winner == "left":
-                self.win_history.append(players_name[2])
+                win_history.append(2)
             elif game_round == 2 and winner == "right":
-                self.win_history.append(players_name[3])
+                win_history.append(3)
         self.session_data['game_round'] += 1
