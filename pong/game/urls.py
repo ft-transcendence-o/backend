@@ -7,6 +7,7 @@ urlpatterns = [
     path("game", game.GameView.as_view(), name="game"),
     path("tournament", game.TournamentView.as_view(), name="tournament"),
     path("session", game.SessionView.as_view(), name="session"),
+    path("test", game.TestView.as_view(), name="test"),
 ]
 
 # BASEURL + /api/pong-game/

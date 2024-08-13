@@ -15,15 +15,11 @@ class GameConsumer(AsyncWebsocketConsumer):
         self.game_task = None
         self.key_input = None
         self.pause = False
-        self.mode = self.scope['url_route']['kwargs']['mode']
+        self.mode = "tournament"
+        if self.scope['url_rout']['kwargs']['mode'] != "tournament":
+            self.mode = "normal"
         self.user_id = self.scope['url_route']['kwargs']['userid']
-        self.session_data = self.get_session_data()
-        await self.send(text_data=json.dumps({
-            "type": "init_data",
-            "left_score": self.session_data['left_score'],
-            "right_score": self.session_data['right_score'],
-            "players_name": self.get_players_name(),
-        }))
+        self.session_data = await self.get_session_data()
         self.game = PongGame(self.send_callback, self.session_data)
 
     async def disconnect(self, close_code):
@@ -34,12 +30,7 @@ class GameConsumer(AsyncWebsocketConsumer):
         # await self.cleanup_resources()
 
     async def save_game_state(self):
-        data = {
-            "players_name": ["sdummy1", "sdummy2", "sdummy3", "sdummy4"],
-            "win_history": ["sdummy3"],
-            "game_round": 2
-        }
-        await sync_to_async(cache.set)(f"session_data_{self.user_id}", data, 500)
+        await sync_to_async(cache.set)(f"session_data_{self.mode}_{self.user_id}", self.session_data, 500)
 
     async def receive(self, text_data):
         if text_data == "start":
