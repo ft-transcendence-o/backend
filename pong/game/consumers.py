@@ -4,8 +4,9 @@ import numpy as np
 import asyncio
 import math
 
-from channels.generic.websocket import AsyncWebsocketConsumer
+from django.core.cache import cache
 from asgiref.sync import sync_to_async
+from channels.generic.websocket import AsyncWebsocketConsumer
 
 
 class GameConsumer(AsyncWebsocketConsumer):
@@ -15,8 +16,8 @@ class GameConsumer(AsyncWebsocketConsumer):
         self.key_input = None
         self.pause = False
         self.mode = self.scope['url_route']['kwargs']['mode']
-        self.session_data = await self.get_session_data()
-        print(f"get_session_data: {self.session_data}")
+        self.user_id = self.scope['url_route']['kwargs']['userid']
+        self.session_data = self.get_session_data()
         await self.send(text_data=json.dumps({
             "type": "init_data",
             "left_score": self.session_data['left_score'],
@@ -29,16 +30,16 @@ class GameConsumer(AsyncWebsocketConsumer):
         if self.game_task:
             self.game_task.cancel()
         # TODO db 작업 및 세션 정리
-        self.save_game_state()
-        self.scope["session"].save()
-        print(f"set_session_data: {self.session_data}")
+        await self.save_game_state()
         # await self.cleanup_resources()
 
-    def save_game_state(self):
-        if self.mode == "tournament":
-            self.scope["session"]['game_info_t'] = self.session_data
-        else:
-            self.scope["session"]['game_info_n'] = self.session_data
+    async def save_game_state(self):
+        data = {
+            "players_name": ["sdummy1", "sdummy2", "sdummy3", "sdummy4"],
+            "win_history": ["sdummy3"],
+            "game_round": 2
+        }
+        await sync_to_async(cache.set)(f"session_data_{self.user_id}", data, 500)
 
     async def receive(self, text_data):
         if text_data == "start":
@@ -73,9 +74,7 @@ class GameConsumer(AsyncWebsocketConsumer):
     def start_game(self):
         self.game_task = asyncio.create_task(self.game_loop())
 
-    async def get_session_data(self):
-        s = await sync_to_async ( self.scope["session"].load) ()
-        print(s)
+    def get_session_data(self):
         if self.mode == 'tournament':
             game_info = self.scope["session"].get('game_info_t', {})
         else:
