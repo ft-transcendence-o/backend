@@ -16,7 +16,7 @@ class GameConsumer(AsyncWebsocketConsumer):
         self.key_input = None
         self.pause = False
         self.mode = "tournament"
-        if self.scope['url_rout']['kwargs']['mode'] != "tournament":
+        if self.scope['url_route']['kwargs']['mode'] != "tournament":
             self.mode = "normal"
         self.user_id = self.scope['url_route']['kwargs']['userid']
         self.session_data = await self.get_session_data()
