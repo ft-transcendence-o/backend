@@ -129,8 +129,9 @@ class SessionView(View):
     @login_required
     async def get(self, request, decoded_jwt):
         """
-        세션 정보 반환
+        캐시에 저장된 세션 정보 반환
         
+        :query mode: 게임 모드 토너먼트 및 일반
         :cookie jwt: 인증을 위한 JWT
         """
         user_id = decoded_jwt.get("user_id")
@@ -139,10 +140,11 @@ class SessionView(View):
             mode = "normal"
         session_data = await cache.aget(f"session_data_{mode}_{user_id}", {})
         data = {
-            "user_id": user_id,
             "players_name": session_data.get("players_name", ['player1', 'player2', 'player3', 'player4']),
             "win_history": session_data.get("win_history", []),
             "game_round": session_data.get("game_round", 1),
+            "left_score": session_data.get("left_score", 0),
+            "right_score": session_data.get("right_score", 0),
         }
         return JsonResponse(data)
 
@@ -163,10 +165,11 @@ class SessionView(View):
         user_id = decoded_jwt.get("user_id")
         players_name = body.get("players_name", ['player1', 'player2', 'player3', 'player4'])
         data = {
-            "user_id": user_id,
             "players_name": players_name,
             "win_history": [],
-            "game_round": 1
+            "game_round": 1,
+            "left_score": 0,
+            "right_score": 0,
         }
         cache.set(f"session_data_tournament_{user_id}", data, 500)
         return JsonResponse({"message": "Set session success"})

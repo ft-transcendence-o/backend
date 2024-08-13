@@ -65,22 +65,18 @@ class GameConsumer(AsyncWebsocketConsumer):
     def start_game(self):
         self.game_task = asyncio.create_task(self.game_loop())
 
-    def get_session_data(self):
-        if self.mode == 'tournament':
-            game_info = self.scope["session"].get('game_info_t', {})
-        else:
-            game_info = self.scope["session"].get('game_info_n', {})
-        
+    async def get_session_data(self):
+        session_data = await cache.aget(f"session_data_{mode}_{user_id}", {})
         context = {
-            'players_name': game_info.get('players_name', ['player1', 'player2', 'player3', 'player4']),
-            'left_score': game_info.get('left_score', 0),
-            'right_score': game_info.get('right_score', 0),
-            'game_mode': game_info.get('game_mode', 'normal'),
-            'game_round': game_info.get('round', 1),
-            'win_history': game_info.get('win_history', []),
+            'players_name': session_data.get('players_name', ['player1', 'player2', 'player3', 'player4']),
+            'win_history': session_data.get('win_history', []),
+            'game_round': session_data.get('round', 1),
+            'left_score': session_data.get('left_score', 0),
+            'right_score': session_data.get('right_score', 0),
         }
         return context
 
+    # DEPRECATED
     def get_players_name(self):
         name_list = self.session_data['players_name']
         game_round = self.session_data['game_round']
@@ -319,7 +315,7 @@ class PongGame:
                 "type": "score",
                 "left_score": self.player1_score,
                 "right_score": self.player2_score,
-                # DELETE!
+                # TODO: DELETE!
                 "scores": f"{self.player1_score}:{self.player2_score}",
             }
         )
