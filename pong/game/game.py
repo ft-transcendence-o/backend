@@ -143,6 +143,7 @@ class SessionView(View):
             mode = "normal"
         session_data = await cache.aget(f"session_data_{mode}_{user_id}", {})
         data = {
+            "user_id": user_id,
             "players_name": session_data.get(
                 "players_name", ["player1", "player2", "player3", "player4"]
             ),
