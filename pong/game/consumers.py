@@ -28,6 +28,7 @@ class GameConsumer(AsyncWebsocketConsumer):
         if self.game_task:
             self.game_task.cancel()
         # TODO db 작업 및 세션 정리
+        # TODO check session data updated
         await self.save_game_state()
         # await self.cleanup_resources()
 
@@ -81,15 +82,3 @@ class GameConsumer(AsyncWebsocketConsumer):
             "right_score": session_data.get("right_score", 0),
         }
         return context
-
-    # DEPRECATED
-    def get_players_name(self):
-        name_list = self.session_data["players_name"]
-        game_round = self.session_data["game_round"]
-        if game_round == 1:
-            return name_list[0], name_list[1]
-        if game_round == 2:
-            return name_list[2], name_list[3]
-        if game_round == 3:
-            return self.session_data["win_history"]
-        return "player1", "player2"
