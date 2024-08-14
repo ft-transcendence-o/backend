@@ -312,7 +312,7 @@ class NormalPongGame(PongGame):
         await sync_to_async(Game.objects.create)(
             user_id=data["user_id"],
             player1_nick=data["players_name"][0],
-            player2_nick=data["players_name"][0],
+            player2_nick=data["players_name"][1],
             player1_score=data["left_score"],
             player2_score=data["right_score"],
             mode="1on1",
