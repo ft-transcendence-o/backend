@@ -28,7 +28,8 @@ class GameConsumer(AsyncWebsocketConsumer):
             self.game_task.cancel()
         # TODO db 작업 및 세션 정리
         # TODO check session data updated
-        await self.save_game_state()
+        if self.game.state != "ended":
+            await self.save_game_state()
         # await self.cleanup_resources()
 
     async def save_game_state(self):

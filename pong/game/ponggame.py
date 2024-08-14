@@ -50,7 +50,7 @@ class PongGame(metaclass=ABCMeta):
         self.panel1_plane = (np.array([0, 0, -1]), 50)  # (법선벡터, 원점과의 거리)
         self.panel2_plane = (np.array([0, 0, 1]), 50)
         # TODO: Unused variable
-        self.game_state = "playing"
+        self.state = "playing"
         self.winner = None
         self.session_data = session_data
         self.game_mode = session_data.get("game_mode", "normal")
@@ -248,7 +248,7 @@ class PongGame(metaclass=ABCMeta):
 
 class TournamentPongGame(PongGame):
     async def set_game_ended(self, winner):
-        self.game_state = "ended"
+        self.state = "ended"
         self.update_match_result(self.session_data)
         # 마지막 경기가 끝나면 DB에 저장
         if self.session_data["current_match"] >= 3:
@@ -302,7 +302,7 @@ class TournamentPongGame(PongGame):
 
 class NormalPongGame(PongGame):
     async def set_game_ended(self, winner):
-        self.game_state = "ended"
+        self.state = "ended"
         await self.save_game_result(self.session_data)
         cache.delete(f"session_data_normal_{self.session_data['user_id']}")
         await self.send_callback({"type": "game_end"})
