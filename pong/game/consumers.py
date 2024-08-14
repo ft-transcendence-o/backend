@@ -1,11 +1,10 @@
-# chat/consumers.py
-import json
-import asyncio
-
+from .utils import get_default_session_data
 from .ponggame import NormalPongGame, TournamentPongGame
 from django.core.cache import cache
 from asgiref.sync import sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
+import json
+import asyncio
 
 
 class GameConsumer(AsyncWebsocketConsumer):
