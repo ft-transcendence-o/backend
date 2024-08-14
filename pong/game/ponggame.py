@@ -18,33 +18,6 @@ KEY_MAPPING = {
 GAME_END_SCORE = 3
 
 
-class TournamentPongGame(PongGame):
-    async def set_game_ended(self, winner):
-        self.game_state = "ended"
-        await self.send_callback({"type": "game_end"})
-        game_round = self.session_data["game_round"]
-        win_history = self.session_data["win_history"]
-
-        if game_round == 1:
-            if winner == "left":
-                win_history.append(0)
-            elif winner == "right":
-                win_history.append(1)
-        elif game_round == 2:
-            if winner == "left":
-                win_history.append(2)
-            elif winner == "right":
-                win_history.append(3)
-        self.session_data["game_round"] += 1
-
-
-class NormalPongGame(PongGame):
-    async def set_game_ended(self, winner):
-        self.game_state = "ended"
-        await self.send_callback({"type": "game_end"})
-        # 일반 모드의 경우 다른 로직이 없으면 추가할 필요 없음
-
-
 class PongGame(metaclass=ABCMeta):
     @abstractmethod
     async def set_game_ended(self, winner):
@@ -285,3 +258,29 @@ class PongGame(metaclass=ABCMeta):
             elif game_round == 2 and winner == "right":
                 win_history.append(3)
         self.session_data["game_round"] += 1
+
+
+class TournamentPongGame(PongGame):
+    async def set_game_ended(self, winner):
+        self.game_state = "ended"
+        await self.send_callback({"type": "game_end"})
+        game_round = self.session_data["game_round"]
+        win_history = self.session_data["win_history"]
+
+        if game_round == 1:
+            if winner == "left":
+                win_history.append(0)
+            elif winner == "right":
+                win_history.append(1)
+        elif game_round == 2:
+            if winner == "left":
+                win_history.append(2)
+            elif winner == "right":
+                win_history.append(3)
+        self.session_data["game_round"] += 1
+
+
+class NormalPongGame(PongGame):
+    async def set_game_ended(self, winner):
+        self.game_state = "ended"
+        await self.send_callback({"type": "game_end"})
