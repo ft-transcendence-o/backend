@@ -164,7 +164,7 @@ class SessionView(View):
         players_name = body.get("players_name", ["player1", "player2", "player3", "player4"])
         # TODO: it can be parameter of get_default_session_data
         default_data["players_name"] = players_name
-        cache.set(f"session_data_tournament_{user_id}", data, 500)
+        cache.set(f"session_data_tournament_{user_id}", default_data, 500)
         return JsonResponse({"message": "Set session success"})
 
 
