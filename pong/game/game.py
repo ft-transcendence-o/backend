@@ -2,6 +2,7 @@ from asgiref.sync import sync_to_async
 from django.http import JsonResponse
 from django.core.cache import cache
 from authentication.decorators import login_required
+from .utils import get_default_session_data
 from .models import Game, Tournament
 from django.views import View
 import json
@@ -141,18 +142,9 @@ class SessionView(View):
         mode = request.GET.get("mode")
         if mode != "tournament":
             mode = "normal"
-        session_data = await cache.aget(f"session_data_{mode}_{user_id}", {})
-        data = {
-            "user_id": user_id,
-            "players_name": session_data.get(
-                "players_name", ["player1", "player2", "player3", "player4"]
-            ),
-            "win_history": session_data.get("win_history", []),
-            "game_round": session_data.get("game_round", 1),
-            "left_score": session_data.get("left_score", 0),
-            "right_score": session_data.get("right_score", 0),
-        }
-        return JsonResponse(data)
+        default_data = get_default_session_data(user_id, mode)
+        session_data = await cache.aget(f"session_data_{mode}_{user_id}", default_data)
+        return JsonResponse(session_data)
 
     @login_required
     async def post(self, request, decoded_jwt):
@@ -169,14 +161,10 @@ class SessionView(View):
             return JsonResponse({"error": "Invalid JSON"}, status=400)
 
         user_id = decoded_jwt.get("user_id")
+        default_data = get_default_session_data(user_id, "tournament")
         players_name = body.get("players_name", ["player1", "player2", "player3", "player4"])
-        data = {
-            "players_name": players_name,
-            "win_history": [],
-            "game_round": 1,
-            "left_score": 0,
-            "right_score": 0,
-        }
+        # TODO: it can be parameter of get_default_session_data
+        default_data["players_name"] = players_name
         cache.set(f"session_data_tournament_{user_id}", data, 500)
         return JsonResponse({"message": "Set session success"})
 

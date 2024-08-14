@@ -71,14 +71,6 @@ class GameConsumer(AsyncWebsocketConsumer):
         self.game_task = asyncio.create_task(self.game_loop())
 
     async def get_session_data(self):
-        session_data = await cache.aget(f"session_data_{self.mode}_{self.user_id}", {})
-        context = {
-            "players_name": session_data.get(
-                "players_name", ["player1", "player2", "player3", "player4"]
-            ),
-            "win_history": session_data.get("win_history", []),
-            "game_round": session_data.get("round", 1),
-            "left_score": session_data.get("left_score", 0),
-            "right_score": session_data.get("right_score", 0),
-        }
-        return context
+        default_data = get_default_session_data(self.user_id, self.mode)
+        session_data = await cache.aget(f"session_data_{self.mode}_{self.user_id}", default_data)
+        return session_data
