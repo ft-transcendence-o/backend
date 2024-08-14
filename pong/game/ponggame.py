@@ -248,11 +248,13 @@ class PongGame(metaclass=ABCMeta):
 class TournamentPongGame(PongGame):
     async def set_game_ended(self, winner):
         self.game_state = "ended"
-        await self.send_callback({"type": "game_end"})
         self.update_match_result(self.session_data)
         # 마지막 경기가 끝나면 DB에 저장
         if self.session_data["current_match"] >= 3:
             await self.save_tournament_results(self.session_data)
+            user_id = self.session_data["user_id"]
+            cache.delete(f"session_data_tournament_{user_id}")
+        await self.send_callback({"type": "game_end"})
             # TODO: 마지막 대진표를 보여줘야 delete 가능
             # user_id = self.session_data["user_id"]
             # cache.delete(f"session_data_tournament_{user_id}")
@@ -301,8 +303,10 @@ class TournamentPongGame(PongGame):
 class NormalPongGame(PongGame):
     async def set_game_ended(self, winner):
         self.game_state = "ended"
-        await self.send_callback({"type": "game_end"})
         await self.save_game_result(self.session_data)
+        user_id = self.session_data["user_id"]
+        cache.delete(f"session_data_normal_{user_id}")
+        await self.send_callback({"type": "game_end"})
 
     async def save_game_result(self, data):
         await sync_to_async(Game.objects.create)(
