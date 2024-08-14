@@ -92,7 +92,6 @@ class GameView(View):
             return JsonResponse({"error": str(e)}, status=500)
 
 
-# DEPRECATED!
 class TournamentView(View):
     @login_required
     async def get(self, request, decoded_jwt):
