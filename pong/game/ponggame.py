@@ -2,7 +2,7 @@ import numpy as np
 import math
 
 from abc import *
-
+from models import Tournament, Game
 
 KEY_MAPPING = {
     "KeyW": 0,
@@ -243,45 +243,72 @@ class PongGame(metaclass=ABCMeta):
             }
         )
 
-    async def set_game_ended(self, winner):
-        # TODO: Unused variable
-        self.game_state = "ended"
-        await self.send_callback({"type": "game_end"})
-        game_round = self.session_data["game_round"]
-        win_history = self.session_data["win_history"]
-        if self.game_mode == "tournament":
-            if game_round == 1 and winner == "left":
-                win_history.append(0)
-            elif game_round == 1 and winner == "right":
-                win_history.append(1)
-            elif game_round == 2 and winner == "left":
-                win_history.append(2)
-            elif game_round == 2 and winner == "right":
-                win_history.append(3)
-        self.session_data["game_round"] += 1
-
 
 class TournamentPongGame(PongGame):
     async def set_game_ended(self, winner):
         self.game_state = "ended"
         await self.send_callback({"type": "game_end"})
-        game_round = self.session_data["game_round"]
-        win_history = self.session_data["win_history"]
+        self.update_match_result(self.session_data)
+        # 마지막 경기가 끝나면 DB에 저장
+        if self.session_data["current_match"] >= 3:
+            self.save_tournament_results(self.session_data)
+            # TODO: 마지막 대진표를 보여줘야 delete 가능
+            # user_id = self.session_data["user_id"]
+            # cache.delete(f"session_data_tournament_{user_id}")
 
-        if game_round == 1:
-            if winner == "left":
-                win_history.append(0)
-            elif winner == "right":
-                win_history.append(1)
-        elif game_round == 2:
-            if winner == "left":
-                win_history.append(2)
-            elif winner == "right":
-                win_history.append(3)
-        self.session_data["game_round"] += 1
+
+    def update_match_result(self, data):
+        current_match = data["matches"][data["current_match"]]
+        player1_index, player2_index = current_match
+        match_result = {
+            "player1_nick": data["players_name"][player1_index],
+            "player2_nick": data["players_name"][player2_index],
+            "player1_score": self.player1_score,
+            "player2_score": self.player2_score,
+        }
+        data["match_results"].append(match_result)
+
+        # 승자 결정
+        winner_index = player1_index if self.player1_score > self.player2_score else player2_index
+        data["win_history"].append(winner_index)
+
+        data["current_match"] += 1
+
+        # 두 번째 경기가 끝나면 결승전 참가자 결정
+        if data["current_match"] == 2:
+            data["matches"][2][0] = data["win_history"][0]
+            data["matches"][2][1] = data["win_history"][1]
+
+    def save_tournament_results(self, data):
+        user_id = data["user_id"]
+        tournament = Tournament.objects.create(user_id=user_id)
+        for i, match in enumerate(data["match_results"]):
+            game_key = f'game{i + 1}'
+            game = Game.objects.create(
+                user_id=user_id,
+                tournament_id=tournament.id,
+                player1_nick=match["player1_nick"],
+                player2_nick=match["player2_nick"],
+                player1_score=match["player1_score"],
+                player2_score=match["player2_score"],
+                mode="Tournament",
+            )
+            setattr(tournament, game_key, game)
+        tournament.save()
 
 
 class NormalPongGame(PongGame):
     async def set_game_ended(self, winner):
         self.game_state = "ended"
         await self.send_callback({"type": "game_end"})
+        self.save_game_result(self.session_data)
+
+    def save_game_result(self, data):
+        Game.objects.create(
+            user_id=data["user_id"],
+            player1_nick=data["players_name"][0],
+            player2_nick=data["players_name"][0],
+            player1_score=data["left_score"],
+            player2_score=data["right_score"],
+            mode="1on1",
+        )

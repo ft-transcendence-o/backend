@@ -7,8 +7,13 @@ def get_default_session_data(user_id, mode):
         "mode": mode,
     }
     if mode == "tournament":
-        data["game_round"] = 1
+        data["current_match"] = 0
         data["win_history"] = []
-        data["match_history"] = []
+        data["match_results"] = []
+        data["matches"] = [
+            [0, 1],
+            [2, 3],
+            [None, None],
+        ]
         data["players_name"].extend(["player3", "player4"])
     return data
