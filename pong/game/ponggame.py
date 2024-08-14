@@ -248,10 +248,10 @@ class PongGame(metaclass=ABCMeta):
 
 class TournamentPongGame(PongGame):
     async def set_game_ended(self, winner):
-        self.state = "ended"
         self.update_match_result(self.session_data)
         # 마지막 경기가 끝나면 DB에 저장
         if self.session_data["current_match"] >= 3:
+            self.state = "ended"
             await self.save_tournament_results(self.session_data)
             cache.delete(f"session_data_tournament_{self.session_data['user_id']}")
         await self.send_callback({"type": "game_end"})
@@ -270,6 +270,8 @@ class TournamentPongGame(PongGame):
             "player2_score": self.player2_score,
         }
         data["match_results"].append(match_result)
+        data["left_score"] = 0
+        data["right_score"] = 0
 
         # 승자 결정
         winner_index = player1_index if self.player1_score > self.player2_score else player2_index
@@ -281,6 +283,7 @@ class TournamentPongGame(PongGame):
         if data["current_match"] == 2:
             data["matches"][2][0] = data["win_history"][0]
             data["matches"][2][1] = data["win_history"][1]
+        cache.set(f"session_data_tournament_{self.session_data['user_id']}", data, 500)
 
     async def save_tournament_results(self, data):
         user_id = data["user_id"]
