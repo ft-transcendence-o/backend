@@ -15,6 +15,7 @@ KEY_MAPPING = {
     "ArrowRight": 7,
 }
 
+# TODO: Need fix in prod
 GAME_END_SCORE = 3
 
 
