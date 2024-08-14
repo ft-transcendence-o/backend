@@ -2,7 +2,7 @@ import numpy as np
 import math
 
 from abc import *
-from models import Tournament, Game
+from game.models import Tournament, Game
 
 KEY_MAPPING = {
     "KeyW": 0,
