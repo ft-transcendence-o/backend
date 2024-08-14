@@ -1,8 +1,9 @@
+from abc import *
+from game.models import Tournament, Game
+from asgiref.sync import sync_to_async
 import numpy as np
 import math
 
-from abc import *
-from game.models import Tournament, Game
 
 KEY_MAPPING = {
     "KeyW": 0,
@@ -251,7 +252,7 @@ class TournamentPongGame(PongGame):
         self.update_match_result(self.session_data)
         # 마지막 경기가 끝나면 DB에 저장
         if self.session_data["current_match"] >= 3:
-            self.save_tournament_results(self.session_data)
+            await self.save_tournament_results(self.session_data)
             # TODO: 마지막 대진표를 보여줘야 delete 가능
             # user_id = self.session_data["user_id"]
             # cache.delete(f"session_data_tournament_{user_id}")
@@ -279,7 +280,7 @@ class TournamentPongGame(PongGame):
             data["matches"][2][0] = data["win_history"][0]
             data["matches"][2][1] = data["win_history"][1]
 
-    def save_tournament_results(self, data):
+    async def save_tournament_results(self, data):
         user_id = data["user_id"]
         tournament = Tournament.objects.create(user_id=user_id)
         for i, match in enumerate(data["match_results"]):
@@ -294,17 +295,17 @@ class TournamentPongGame(PongGame):
                 mode="Tournament",
             )
             setattr(tournament, game_key, game)
-        tournament.save()
+        await sync_to_async(tournament.save)()
 
 
 class NormalPongGame(PongGame):
     async def set_game_ended(self, winner):
         self.game_state = "ended"
         await self.send_callback({"type": "game_end"})
-        self.save_game_result(self.session_data)
+        await self.save_game_result(self.session_data)
 
-    def save_game_result(self, data):
-        Game.objects.create(
+    async def save_game_result(self, data):
+        await sync_to_async(Game.objects.create)(
             user_id=data["user_id"],
             player1_nick=data["players_name"][0],
             player2_nick=data["players_name"][0],
