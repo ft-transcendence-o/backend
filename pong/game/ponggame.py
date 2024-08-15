@@ -157,14 +157,14 @@ class PongGame(metaclass=ABCMeta):
                     self.panel1_plane, self.panel1_pos
                 )  # panel1과 충돌한경우
             else:
-                await self.player2_win()  # panel1이 위치한 면에 충돌한경우
+                await self.player_win("left") # panel1이 위치한 면에 충돌한경우
         elif self.ball_pos[2] <= -48:
             if self.is_ball_in_panel(self.panel2_pos):
                 self.handle_panel_collision(
                     self.panel2_plane, self.panel2_pos
                 )  # panel2와 충돌한 경우
             else:
-                await self.player1_win()
+                await self.player_win("right")
 
     # 공 중심의 x, y좌표가 panel안에 위치하는지 확인하는 함수
     def is_ball_in_panel(self, panel_pos):
@@ -217,25 +217,25 @@ class PongGame(metaclass=ABCMeta):
         # 감쇠 항을 추가하여 미세한 감속 효과 부여
         self.ball_rot *= 0.5
 
-    async def player1_win(self):
+    def reset_ball(self):
         self.ball_vec = np.array([0.0, 0.0, 1.0])
         self.angular_vec = np.array([0.0, 0.0, 0.0])
         self.ball_pos = np.array([0.0, 0.0, 0.0])
-        self.player1_score += 1
-        self.session_data["left_score"] += 1
-        await self.send_score_callback()
-        if self.player1_score >= GAME_END_SCORE:
-            await self.set_game_ended("left")
 
-    async def player2_win(self):
-        self.ball_vec = np.array([0.0, 0.0, 1.0])
-        self.angular_vec = np.array([0.0, 0.0, 0.0])
-        self.ball_pos = np.array([0.0, 0.0, 0.0])
-        self.player2_score += 1
-        self.session_data["right_score"] += 1
+    async def player_win(self, player):
+        self.reset_ball()
+        if player == "left":
+            self.player1_score += 1
+            self.session_data["left_score"] += 1
+            if self.player1_score >= GAME_END_SCORE:
+                await self.set_game_ended("left")
+        elif player == "right":
+            self.player2_score += 1
+            self.session_data["right_score"] += 1
+            if self.player2_score >= GAME_END_SCORE:
+                await self.set_game_ended("right")
+                
         await self.send_score_callback()
-        if self.player2_score >= GAME_END_SCORE:
-            await self.set_game_ended("right")
 
     async def send_score_callback(self):
         await self.send_callback(
