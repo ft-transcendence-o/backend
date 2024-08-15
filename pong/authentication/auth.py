@@ -423,7 +423,5 @@ class UserInfo(View):
         data = {
             "email": user_info["email"],
             "login": user_info["login"],
-            "usual_full_name": user_info["usual_full_name"],
-            "image_link": user_info["image_link"],
         }
         return JsonResponse(data, status=200)
