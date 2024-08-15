@@ -167,6 +167,26 @@ class SessionView(View):
         cache.set(f"session_data_tournament_{user_id}", default_data, 500)
         return JsonResponse({"message": "Set session success"})
 
+    @login_required
+    async def delete(self, request, decoded_jwt):
+        """
+        페이지 뒤로가기를 누를 시 세션데이터로 인한 오류 발생
+        세션 데이터를 지우는 API
+
+        :cookie jwt: 인증을 위한 JWT
+        """
+        user_id = decoded_jwt.get("user_id")
+        try:
+            body = json.loads(request.body.decode("utf-8"))
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+        mode = body.get("mode")
+        if mode != "tournament":
+            mode = "normal"
+        cache.delete(f"session_data_{mode}_{user_id}")
+        return JsonResponse({"message": "Delete session success"})
+
 
 class TestView(View):
     @login_required
