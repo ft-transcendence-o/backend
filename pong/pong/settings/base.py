@@ -31,14 +31,11 @@ MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    # "django.middleware.csrf.CsrfViewMiddleware",
 ]
 
-SECURE_SSL_REDIRECT = True
 SECURE_HSTS_SECONDS = 3600
 SECURE_HSTS_PRELOAD = True
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-CSRF_COOKIE_SECURE = True
 
 ROOT_URLCONF = "pong.urls"
 
@@ -47,9 +44,6 @@ ASGI_APPLICATION = "pong.asgi.application"
 
 TIME_ZONE = "Asia/Seoul"
 USE_TZ = False
-
-CORS_ORIGIN_ALLOW_ALL = True
-CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_METHODS = (
     "DELETE",

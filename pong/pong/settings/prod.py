@@ -1,8 +1,9 @@
+from os import getenv
 from .base import *
 
 DEBUG = False
 
-ALLOWED_HOSTS = ["https://127.0.0.1"]
+ALLOWED_HOSTS = [getenv("ALLOW_HOST")]
 
 DATABASES = {
     "default": {
