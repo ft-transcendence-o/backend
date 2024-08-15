@@ -14,29 +14,13 @@ from pathlib import Path
 from dotenv import load_dotenv
 from os import getenv, path
 
-import string
-import random
-
 load_dotenv(verbose=True)
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-chars = (
-    "".join([string.ascii_letters, string.digits, string.punctuation])
-    .replace("'", "")
-    .replace('"', "")
-    .replace("\\", "")
-)
-SECRET_KEY = "".join([random.SystemRandom().choice(chars) for i in range(50)])
+SECRET_KEY = getenv("SECRET_KEY")
 
 INSTALLED_APPS = [
-    # "Make sure "daphne" is at the top
+    # Make sure "daphne" is at the top
     "daphne",
     "authentication",
     "game",
@@ -54,14 +38,7 @@ ROOT_URLCONF = "pong.urls"
 WSGI_APPLICATION = "pong.wsgi.application"
 ASGI_APPLICATION = "pong.asgi.application"
 
-
-# Internationalization
-# https://docs.djangoproject.com/en/5.0/topics/i18n/
-
-LANGUAGE_CODE = "en-us"
-
 TIME_ZONE = "Asia/Seoul"
-
 USE_TZ = False
 
 CORS_ORIGIN_ALLOW_ALL = True
