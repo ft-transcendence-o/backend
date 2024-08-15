@@ -287,10 +287,10 @@ class TournamentPongGame(PongGame):
 
     async def save_tournament_results(self, data):
         user_id = data["user_id"]
-        tournament = Tournament.objects.create(user_id=user_id)
+        tournament = await sync_to_async(Tournament.objects.create)(user_id=user_id)
         for i, match in enumerate(data["match_results"]):
             game_key = f'game{i + 1}'
-            game = Game.objects.create(
+            game = await sync_to_async(Game.objects.create)(
                 user_id=user_id,
                 tournament_id=tournament.id,
                 player1_nick=match["player1_nick"],
