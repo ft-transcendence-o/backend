@@ -177,9 +177,6 @@ class OAuthView(View):
             "access_token": tokens["access_token"],
             "refresh_token": tokens["refresh_token"],
             "need_otp": user_data.need_otp,
-            # DEPRECATED
-            "usual_full_name": user_data.usual_full_name,
-            "image_link": user_data.image_link,
         }
         cache.set(f"user_data_{user_data.id}", cache_value, TOKEN_EXPIRES)
 
