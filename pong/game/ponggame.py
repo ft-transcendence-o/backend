@@ -29,7 +29,7 @@ class PongGame(metaclass=ABCMeta):
         데이터를 처리하는 방식이 상이함
         """
         pass
-    
+
     def __init__(self, send_callback, session_data):
         self.send_callback = send_callback
         self.ball_pos = np.array([0.0, 0.0, 0.0])  # 공위치
@@ -156,7 +156,7 @@ class PongGame(metaclass=ABCMeta):
                     self.panel1_plane, self.panel1_pos
                 )  # panel1과 충돌한경우
             else:
-                await self.player_win("left") # panel1이 위치한 면에 충돌한경우
+                await self.player_win("left")  # panel1이 위치한 면에 충돌한경우
         elif self.ball_pos[2] <= -48:
             if self.is_ball_in_panel(self.panel2_pos):
                 self.handle_panel_collision(
@@ -203,7 +203,7 @@ class PongGame(metaclass=ABCMeta):
         friction_torque = -self.ball_rot / np.linalg.norm(self.ball_rot) * F
 
         # 관성 모멘트 (구의 경우)
-        mass = 4 # 공의 질량
+        mass = 4  # 공의 질량
         radius = 2  # 공의 반지름
         inertia = (2 / 5) * 4 * 4
 
@@ -233,7 +233,7 @@ class PongGame(metaclass=ABCMeta):
             self.session_data["right_score"] += 1
             if self.player2_score >= GAME_END_SCORE:
                 await self.set_game_ended()
-                
+
         await self.send_score_callback()
 
     async def send_score_callback(self):
@@ -254,7 +254,6 @@ class TournamentPongGame(PongGame):
             self.state = "ended"
             await self.save_tournament_results(self.session_data)
         await self.send_callback({"type": "game_end"})
-
 
     def update_match_result(self, data):
         current_match = data["matches"][data["current_match"]]
@@ -285,7 +284,7 @@ class TournamentPongGame(PongGame):
         user_id = data["user_id"]
         tournament = await sync_to_async(Tournament.objects.create)(user_id=user_id)
         for i, match in enumerate(data["match_results"]):
-            game_key = f'game{i + 1}'
+            game_key = f"game{i + 1}"
             game = await sync_to_async(Game.objects.create)(
                 user_id=user_id,
                 tournament_id=tournament.id,

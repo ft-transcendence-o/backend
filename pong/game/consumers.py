@@ -16,6 +16,7 @@ class GameConsumer(AsyncWebsocketConsumer):
     :param mode: [normal, tournament] 둘 중 하나
     :param userid: 유저 id값
     """
+
     async def connect(self):
         await self.accept()
         self.game_task = None
