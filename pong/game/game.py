@@ -185,35 +185,3 @@ class SessionView(View):
             mode = "normal"
         cache.delete(f"session_data_{mode}_{user_id}")
         return JsonResponse({"message": "Delete session success"})
-
-
-class TestView(View):
-    @login_required
-    async def post(self, request, decoded_jwt):
-        """
-        tournament 플레이어 이름을 cache에 저장한 뒤
-        불러와서 사용
-
-        :body players_name: 사용자 이름 리스트
-        :cookie jwt: 인증을 위한 JWT
-        """
-        try:
-            body = json.loads(request.body.decode("utf-8"))
-        except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON"}, status=400)
-
-        user_id = decoded_jwt.get("user_id")
-        players_name = body.get("players_name", ["player1", "player2", "player3", "player4"])
-        win_history = body.get("win_history", [])
-        game_round = body.get("game_round", 1)
-        left_score = body.get("left_score", 0)
-        right_score = body.get("right_score", 0)
-        data = {
-            "players_name": players_name,
-            "win_history": win_history,
-            "game_round": game_round,
-            "left_score": left_score,
-            "right_score": right_score,
-        }
-        cache.set(f"session_data_tournament_{user_id}", data, 500)
-        return JsonResponse({"message": "Set tournament session success"})

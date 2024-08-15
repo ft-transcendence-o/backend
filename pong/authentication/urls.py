@@ -9,6 +9,4 @@ urlpatterns = [
     path("otp/verify", auth.OTPView.as_view(), name="otp_verify"),
     path("login", auth.LoginView.as_view(), name="login"),
     path("auth-status", auth.StatusView.as_view(), name="auth_status"),
-    # TODO: DELETE THIS, JUST FOR TEST
-    path("test", auth.Test.as_view(), name="test"),
 ]

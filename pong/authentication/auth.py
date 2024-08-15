@@ -430,29 +430,3 @@ class UserInfo(View):
             "image_link": user_info["image_link"],
         }
         return JsonResponse(data, status=200)
-
-
-# TODO: DELETE THIS, JUST FOR TEST
-class Test(View):
-    async def get(self, request):
-        refresh_token = request.GET.get("refresh_token")
-        return await self.exchange_code_for_token(refresh_token)
-
-    async def exchange_code_for_token(self, refresh_token):
-        """42API에서 유저 정보를 받아온다"""
-        print(refresh_token)
-        data = {
-            "grant_type": "refresh_token",
-            "client_id": INTRA_UID,
-            "client_secret": INTRA_SECRET_KEY,
-            "redirect_uri": REDIRECT_URI,
-            "refresh_token": refresh_token,
-            "state": STATE,
-        }
-        async with aiohttp.ClientSession() as session:
-            async with session.post(f"{API_URL}/oauth/token", data=data) as response:
-                response_data = await response.json()
-                if response.status != 200:
-                    return JsonResponse(response_data)
-                return JsonResponse(response_data)
-        return JsonResponse({"error": "error2"})

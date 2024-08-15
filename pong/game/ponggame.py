@@ -52,7 +52,6 @@ class PongGame(metaclass=ABCMeta):
         # panel이 위치한 평면
         self.panel1_plane = (np.array([0, 0, -1]), 50)  # (법선벡터, 원점과의 거리)
         self.panel2_plane = (np.array([0, 0, 1]), 50)
-        # TODO: Unused variable
         self.state = "playing"
         self.winner = None
         self.session_data = session_data
@@ -243,8 +242,6 @@ class PongGame(metaclass=ABCMeta):
                 "type": "score",
                 "left_score": self.player1_score,
                 "right_score": self.player2_score,
-                # TODO: DELETE!
-                "scores": f"{self.player1_score}:{self.player2_score}",
             }
         )
 
@@ -256,11 +253,7 @@ class TournamentPongGame(PongGame):
         if self.session_data["current_match"] >= 3:
             self.state = "ended"
             await self.save_tournament_results(self.session_data)
-            # cache.delete(f"session_data_tournament_{self.session_data['user_id']}")
         await self.send_callback({"type": "game_end"})
-            # TODO: 마지막 대진표를 보여줘야 delete 가능
-            # user_id = self.session_data["user_id"]
-            # cache.delete(f"session_data_tournament_{user_id}")
 
 
     def update_match_result(self, data):
