@@ -253,7 +253,7 @@ class TournamentPongGame(PongGame):
         if self.session_data["current_match"] >= 3:
             self.state = "ended"
             await self.save_tournament_results(self.session_data)
-            cache.delete(f"session_data_tournament_{self.session_data['user_id']}")
+            # cache.delete(f"session_data_tournament_{self.session_data['user_id']}")
         await self.send_callback({"type": "game_end"})
             # TODO: 마지막 대진표를 보여줘야 delete 가능
             # user_id = self.session_data["user_id"]
