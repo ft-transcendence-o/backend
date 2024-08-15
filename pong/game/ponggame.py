@@ -24,6 +24,10 @@ GAME_END_SCORE = 3
 class PongGame(metaclass=ABCMeta):
     @abstractmethod
     async def set_game_ended(self, winner):
+        """
+        TournamentGame, NormalGame 모드로 구분된 게임이 종료되었을 떄
+        데이터를 처리하는 방식이 상이함
+        """
         pass
     
     def __init__(self, send_callback, session_data):
@@ -33,7 +37,6 @@ class PongGame(metaclass=ABCMeta):
         self.ball_rot = np.array([0.0, 0.0, 0.0])  # 공의 회전벡터
         self.panel1_pos = np.array([0.0, 0.0, 50.0])  # panel1의 초기위치
         self.panel2_pos = np.array([0.0, 0.0, -50.0])  # panel2의 초기위치
-        # self.flag = True # 공이 날라가는 방향
 
         # 키입력값 [W, A, S, D, UP, Left, Down, Right]
         self.key_state = [False, False, False, False, False, False, False, False]
@@ -133,7 +136,7 @@ class PongGame(metaclass=ABCMeta):
     def get_collision_point_with_plane(self, plane):
         distance_to_plane = self.plane_distance_to_point(plane)
         if abs(distance_to_plane) <= 2:
-            self.ball_rot -= plane[0] * 0.01  # 여기
+            self.ball_rot -= plane[0] * 0.01
             return self.ball_pos - (plane[0] * distance_to_plane)
         return None
 
@@ -201,7 +204,7 @@ class PongGame(metaclass=ABCMeta):
         friction_torque = -self.ball_rot / np.linalg.norm(self.ball_rot) * F
 
         # 관성 모멘트 (구의 경우)
-        mass = 4  #  # 공의 질량
+        mass = 4 # 공의 질량
         radius = 2  # 공의 반지름
         inertia = (2 / 5) * 4 * 4
 
