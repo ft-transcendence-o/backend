@@ -232,7 +232,7 @@ class PongGame(metaclass=ABCMeta):
 
         await self.send_score_callback()
         if self.player1_score >= GAME_END_SCORE or self.player2_score >= GAME_END_SCORE:
-            await.self.set_game_ended()
+            await self.set_game_ended()
 
     async def send_score_callback(self):
         await self.send_callback(
