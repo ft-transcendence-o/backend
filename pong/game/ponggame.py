@@ -156,14 +156,14 @@ class PongGame(metaclass=ABCMeta):
                     self.panel1_plane, self.panel1_pos
                 )  # panel1과 충돌한경우
             else:
-                await self.update_score_and_check_win("left")  # panel1이 위치한 면에 충돌한경우
+                await self.update_score_and_check_win("right")  # panel1이 위치한 면에 충돌한경우
         elif self.ball_pos[2] <= -48:
             if self.is_ball_in_panel(self.panel2_pos):
                 self.handle_panel_collision(
                     self.panel2_plane, self.panel2_pos
                 )  # panel2와 충돌한 경우
             else:
-                await self.update_score_and_check_win("right")
+                await self.update_score_and_check_win("left")
 
     # 공 중심의 x, y좌표가 panel안에 위치하는지 확인하는 함수
     def is_ball_in_panel(self, panel_pos):
