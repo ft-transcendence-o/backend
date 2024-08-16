@@ -217,7 +217,8 @@ class PongGame(metaclass=ABCMeta):
         self.ball_rot *= 0.5
 
     def reset_ball(self):
-        self.ball_vec = np.array([0.0, 0.0, 1.0])
+        direction = 1.0 if scoring_player == "left" else -1.0
+        self.ball_vec = np.array([0.0, 0.0, direction])
         self.angular_vec = np.array([0.0, 0.0, 0.0])
         self.ball_pos = np.array([0.0, 0.0, 0.0])
 
