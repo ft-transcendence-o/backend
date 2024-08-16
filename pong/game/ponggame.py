@@ -226,15 +226,13 @@ class PongGame(metaclass=ABCMeta):
         if player == "left":
             self.player1_score += 1
             self.session_data["left_score"] += 1
-            if self.player1_score >= GAME_END_SCORE:
-                await self.set_game_ended()
         elif player == "right":
             self.player2_score += 1
             self.session_data["right_score"] += 1
-            if self.player2_score >= GAME_END_SCORE:
-                await self.set_game_ended()
 
         await self.send_score_callback()
+        if self.player1_score >= GAME_END_SCORE or self.player2_score >= GAME_END_SCORE:
+            await.self.set_game_ended()
 
     async def send_score_callback(self):
         await self.send_callback(
