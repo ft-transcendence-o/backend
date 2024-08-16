@@ -156,14 +156,14 @@ class PongGame(metaclass=ABCMeta):
                     self.panel1_plane, self.panel1_pos
                 )  # panel1과 충돌한경우
             else:
-                await self.player_win("left")  # panel1이 위치한 면에 충돌한경우
+                await self.update_score_and_check_win("left")  # panel1이 위치한 면에 충돌한경우
         elif self.ball_pos[2] <= -48:
             if self.is_ball_in_panel(self.panel2_pos):
                 self.handle_panel_collision(
                     self.panel2_plane, self.panel2_pos
                 )  # panel2와 충돌한 경우
             else:
-                await self.player_win("right")
+                await self.update_score_and_check_win("right")
 
     # 공 중심의 x, y좌표가 panel안에 위치하는지 확인하는 함수
     def is_ball_in_panel(self, panel_pos):
@@ -221,12 +221,12 @@ class PongGame(metaclass=ABCMeta):
         self.angular_vec = np.array([0.0, 0.0, 0.0])
         self.ball_pos = np.array([0.0, 0.0, 0.0])
 
-    async def player_win(self, player):
+    async def update_score_and_check_win(self, scoring_player):
         self.reset_ball()
-        if player == "left":
+        if scoring_player == "left":
             self.player1_score += 1
             self.session_data["left_score"] += 1
-        elif player == "right":
+        elif scoring_player == "right":
             self.player2_score += 1
             self.session_data["right_score"] += 1
 
