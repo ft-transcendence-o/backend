@@ -216,14 +216,14 @@ class PongGame(metaclass=ABCMeta):
         # 감쇠 항을 추가하여 미세한 감속 효과 부여
         self.ball_rot *= 0.5
 
-    def reset_ball(self):
+    def reset_ball(self, scoring_player):
         direction = 1.0 if scoring_player == "left" else -1.0
         self.ball_vec = np.array([0.0, 0.0, direction])
         self.angular_vec = np.array([0.0, 0.0, 0.0])
         self.ball_pos = np.array([0.0, 0.0, 0.0])
 
     async def update_score_and_check_win(self, scoring_player):
-        self.reset_ball()
+        self.reset_ball(scoring_player)
         if scoring_player == "left":
             self.player1_score += 1
             self.session_data["left_score"] += 1
