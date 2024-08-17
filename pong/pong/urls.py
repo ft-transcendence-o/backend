@@ -21,3 +21,5 @@ urlpatterns = [
     path("user-management/", include("authentication.urls")),
     path("game-management/", include("game.urls")),
 ]
+
+urlpatterns += [path('silk/', include('silk.urls', namespace='silk'))]

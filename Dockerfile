@@ -13,8 +13,9 @@ RUN touch logs/debug.log
 RUN echo '#!/bin/bash\n\n\
 python manage.py makemigrations authentication\n\
 python manage.py makemigrations game\n\
+python manage.py makemigrations silk\n\
 python manage.py migrate\n\
-python manage.py collectstatic --noinput\n\
+python manage.py collectstatic\n\
 export DJANGO_SETTINGS_MODULE=pong.settings.prod\n\
 daphne pong.asgi:application --port 8000 --bind 0.0.0.0' > start.sh
 

@@ -55,7 +55,10 @@ LOGGING = {
 
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
-        "LOCATION": "/app/pong/pong_cache",
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://pong_redis:6379",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
     }
 }

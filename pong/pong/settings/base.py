@@ -21,17 +21,49 @@ SECRET_KEY = getenv("SECRET_KEY")
 
 INSTALLED_APPS = [
     # Make sure "daphne" is at the top
+    "silk",
     "daphne",
+    # 'django.contrib.sessions',
+    # 'django.contrib.staticfiles',
+    # 'django.contrib.contenttypes',
+    # 'django.contrib.auth',
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
     "authentication",
     "game",
     "corsheaders",
+]
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
 ]
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "silk.middleware.SilkyMiddleware",
 ]
+
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 SECURE_HSTS_SECONDS = 3600
 SECURE_HSTS_PRELOAD = True
