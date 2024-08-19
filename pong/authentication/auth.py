@@ -3,7 +3,7 @@ from django.http import JsonResponse, HttpResponseRedirect
 from django.core.cache import cache
 from django.utils import timezone
 from django.views import View
-from django.db import transaction
+from django.db import transaction, DatabaseError
 from os import getenv
 import aiohttp
 import pyotp
@@ -16,7 +16,7 @@ from authentication.decorators import (
     login_required,
     token_refresh_if_invalid,
 )
-from authentication.models import User, OTPSecret
+from authentication.models import User, OTPSecret, OTPLockInfo
 
 
 logger = logging.getLogger(__name__)
@@ -83,7 +83,8 @@ class OAuthView(View):
 
         encoded_jwt = self.create_jwt_token(tokens["access_token"], user_info["user"].id)
         redirect_url = self.get_redirect_url(
-            user_info["user"].need_otp, user_info["otp"].is_verified
+            # TODO: it can be shrink
+            user_info["otp"].need_otp, user_info["otp"].is_verified
         )
         return self.create_redirect_response(redirect_url, encoded_jwt)
 
@@ -162,9 +163,13 @@ class OAuthView(View):
         try:
             with transaction.atomic():
                 user_data = self.update_or_create_user(data, tokens["refresh_token"])
-                otp_data = self.get_or_create_otp_secret(data["id"])
+                otp_data, created = self.get_or_create_otp_secret(data["id"])
+                if created:
+                    self.create_otp_lock_info(otp_data)
             self.set_cache(user_data, otp_data, tokens)
             return True, {"user": user_data, "otp": otp_data}
+        except DatabaseError as e:
+            return False ,str(e)
         except transaction.TransactionManagementError as e:
             return False, str(e)
 
@@ -176,7 +181,7 @@ class OAuthView(View):
             "is_verified": otp_data.is_verified,
             "access_token": tokens["access_token"],
             "refresh_token": tokens["refresh_token"],
-            "need_otp": user_data.need_otp,
+            "need_otp": otp_data.need_otp,
         }
         cache.set(f"user_data_{user_data.id}", cache_value, TOKEN_EXPIRES)
 
@@ -194,16 +199,20 @@ class OAuthView(View):
         return user
 
     def get_or_create_otp_secret(self, user_id):
-        otp_secret, _ = OTPSecret.objects.get_or_create(
+        otp_secret, created = OTPSecret.objects.get_or_create(
             user_id=user_id,
             defaults={
                 "secret": pyotp.random_base32(),
-                "attempts": 0,
-                "last_attempt": None,
-                "is_locked": False,
+                "is_verified": False,
+                "need_otp": True,
             },
         )
-        return otp_secret
+        return otp_secret, created
+
+    def create_otp_lock_info(self, otp_data):
+        OTPLockInfo.objects.create(
+            otp_secret=otp_data,
+        )
 
     def create_jwt_token(self, access_token, user_id):
         return jwt.encode(
@@ -319,12 +328,12 @@ class OTPView(View):
     @sync_to_async
     def get_otp_data(self, user_id):
         try:
-            otp_secret = OTPSecret.objects.get(user_id=user_id)
+            otp_secret = OTPSecret.objects.select_related("otplockinfo").get(user_id=user_id)
             data = {
                 "secret": otp_secret.secret,
-                "attempts": otp_secret.attempts,
-                "last_attempt": otp_secret.last_attempt,
-                "is_locked": otp_secret.is_locked,
+                "attempts": otp_secret.otplockinfo.attempts,
+                "last_attempt": otp_secret.otplockinfo.last_attempt,
+                "is_locked": otp_secret.otplockinfo.is_locked,
                 "is_verified": otp_secret.is_verified,
             }
         except OTPSecret.DoesNotExist:
@@ -362,19 +371,27 @@ class OTPView(View):
         otp_data["attempts"] = 0
         otp_data["is_locked"] = False
         otp_data["is_verified"] = True
-        return self.update_otp_data(user_id, otp_data)
+        self.update_otp_data(user_id, otp_data)
 
     def update_otp_data(self, user_id, data):
         """
         OTP 시도 횟수 및 시간 저장
         5회 이상 시도 시 계정 잠금 및 초기화 시간 900초 소요
         """
-        return OTPSecret.objects.filter(user_id=user_id).update(
-            attempts=data["attempts"],
-            last_attempt=data["last_attempt"],
-            is_locked=data["is_locked"],
-            is_verified=data["is_verified"],
-        )
+        with transaction.atomic():
+            otp_secret = OTPSecret.objects.select_for_update().get(user_id=user_id)
+
+            # TODO: if not changed, do not hit query
+            # OTPSecret 업데이트
+            otp_secret.is_verified = data["is_verified"]
+            otp_secret.save()
+
+            # OTPLockInfo 업데이트
+            otp_lock_info = OTPLockInfo.objects.get(otp_secret=otp_secret)
+            otp_lock_info.attempts = data["attempts"]
+            otp_lock_info.last_attempt = data["last_attempt"]
+            otp_lock_info.is_locked = data["is_locked"]
+            otp_lock_info.save()
 
 
 class LoginView(View):
