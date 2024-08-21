@@ -19,7 +19,6 @@ urllib3==2.2.2
 psycopg2-binary==2.9.9
 uvicorn==0.30.1
 gunicorn==22.0.0
-django-cors-headers==4.4.0
 cryptography==42.0.8
 hyperlink==21.0.0
 incremental==24.7.2 
