@@ -15,7 +15,7 @@ async def get_user_data(user_id):
     """
     user_data = await get_user_data_from_cache(user_id)
     if not user_data:
-        user_data = get_user_data_from_db(user_id)
+        user_data = await get_user_data_from_db(user_id)
         if user_data:
             decrypt_secret(user_data)
             await cache.aset(f"user_data_{user_id}", user_data, TOKEN_EXPIRES)
@@ -30,8 +30,9 @@ def decrypt_secret(user_data):
 async def get_user_data_from_cache(user_id):
     return await cache.aget(f"user_data_{user_id}")
 
-async def get_user_data_from_db(user_id):
     user_data = User.objects.annotate(
+@sync_to_async
+def get_user_data_from_db(user_id):
         encrypted_secret=F("otpsecret__encrypted_secret"),
         is_verified=F("otpsecret__is_verified"),
         need_otp=F("otpsecret__need_otp")

@@ -272,7 +272,7 @@ class OTPView(View):
         otp_data["last_attempt"] = now
         if otp_data["attempts"] >= MAX_ATTEMPTS:
             otp_data["is_locked"] = True
-            await self.update_otp_data(user_id, otp_data)
+            await sync_to_async(self.update_otp_data)(user_id, otp_data)
             return JsonResponse(
                 {
                     "error": "Maximum number of attempts exceeded. Please try again after 15 minutes."
@@ -281,7 +281,7 @@ class OTPView(View):
             )
 
         if self.verify_otp(request, otp_data["secret"]):
-            await self.update_otp_success(user_id, otp_data)
+            await sync_to_async(self.update_otp_success)(user_id, otp_data)
             return await self.create_success_response(decoded_jwt)
 
         await sync_to_async(self.update_otp_data)(user_id, otp_data)
