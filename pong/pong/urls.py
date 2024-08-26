@@ -18,6 +18,6 @@ Including another URLconf
 from django.urls import include, path
 
 urlpatterns = [
-    path("user-management/", include("authentication.urls")),
+    path("user-management/", include("auth.urls")),
     path("game-management/", include("game.urls")),
 ]

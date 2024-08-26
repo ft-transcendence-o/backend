@@ -2,10 +2,11 @@ from asgiref.sync import sync_to_async
 from django.db import transaction, IntegrityError
 from django.db.models import F
 from django.core.cache import cache
+import logging
+
 from .models import User, OTPSecret
 from .crypto import AESCipher
 from .constants import TOKEN_EXPIRES
-import logging
 
 
 logger = logging.getLogger(__name__)

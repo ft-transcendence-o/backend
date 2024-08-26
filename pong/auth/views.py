@@ -12,14 +12,14 @@ import jwt
 import json
 import logging
 
-from authentication.decorators import (
+from .decorators import (
     token_required,
     login_required,
     refresh_access_token,
 )
-from authentication.models import User, OTPSecret, OTPLockInfo
-from authentication.utils import get_user_data
-from authentication.constants import *
+from .models import User, OTPSecret, OTPLockInfo
+from .utils import get_user_data
+from .constants import *
 
 
 logger = logging.getLogger(__name__)

@@ -1,7 +1,7 @@
 from asgiref.sync import sync_to_async
 from django.http import JsonResponse
 from django.core.cache import cache
-from authentication.decorators import login_required
+from auth.decorators import login_required
 from .utils import get_default_session_data
 from .models import Game, Tournament
 from django.views import View

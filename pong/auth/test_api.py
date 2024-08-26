@@ -2,15 +2,16 @@ from django.test import TestCase, AsyncClient, RequestFactory
 from django.urls import reverse
 from django.utils import timezone
 from datetime import timedelta
-from authentication.models import OTPSecret, User
-from authentication.views import (
-    OAuthView,
-    OTPView,
-)
-from authentication.constants import MAX_ATTEMPTS
 from unittest.mock import patch, MagicMock
 import json
 import jwt
+
+from .models import OTPSecret, User
+from .views import (
+    OAuthView,
+    OTPView,
+)
+from .constants import MAX_ATTEMPTS
 
 
 class UserInfoTestCase(TestCase):

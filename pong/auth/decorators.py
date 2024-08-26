@@ -6,9 +6,9 @@ from os import getenv
 import aiohttp
 import jwt
 
-from authentication.models import User
-from authentication.utils import get_user_data
-from authentication.constants import (
+from .models import User
+from .utils import get_user_data
+from .constants import (
     INTRA_SECRET_KEY,
     INTRA_UID,
     STATE,

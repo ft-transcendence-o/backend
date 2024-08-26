@@ -1,5 +1,5 @@
 from django.db import models
-from authentication.models import User
+from auth.models import User
 
 GAME_MODES = [("1ON1", "1on1"), ("TOURNAMENT", "Tournament")]
 

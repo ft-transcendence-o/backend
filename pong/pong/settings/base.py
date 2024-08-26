@@ -22,7 +22,7 @@ SECRET_KEY = getenv("SECRET_KEY")
 INSTALLED_APPS = [
     # Make sure "daphne" is at the top
     "daphne",
-    "authentication",
+    "auth",
     "game",
 ]
 
