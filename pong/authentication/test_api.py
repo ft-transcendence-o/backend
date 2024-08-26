@@ -3,7 +3,7 @@ from django.urls import reverse
 from django.utils import timezone
 from datetime import timedelta
 from authentication.models import OTPSecret, User
-from authentication.auth import (
+from authentication.views import (
     OAuthView,
     OTPView,
 )
