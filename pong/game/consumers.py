@@ -1,5 +1,5 @@
 from .utils import get_default_session_data
-from .ponggame import NormalPongGame, TournamentPongGame
+from .pong_game import NormalPongGame, TournamentPongGame
 from django.core.cache import cache
 from asgiref.sync import sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
