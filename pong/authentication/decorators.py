@@ -1,6 +1,7 @@
 from asgiref.sync import sync_to_async
 from django.http import JsonResponse, HttpResponseRedirect
 from functools import wraps
+from datetime import datetime
 from os import getenv
 import aiohttp
 import jwt
@@ -43,7 +44,7 @@ def auth_decorator_factory(check_otp=False):
                 return JsonResponse({"error": "Invalid jwt error"}, status=401)
 
             custom_exp = decoded_jwt.get("custom_exp")
-            expiration_time = datetime.fromisoformat(custom_exp.rstrip("Z"))
+            expiration_time = datetime.fromtimestamp(custom_exp)
             # 토큰이 만료되지 않은 경우
             if expiration_time > datetime.now():
                 return await func(self, request, decoded_jwt, *args, **kwargs)
