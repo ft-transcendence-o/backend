@@ -1,5 +1,10 @@
 from django.urls import path, re_path
-from . import game, consumers
+from . import consumers
+from .views import (
+    GameView,
+    TournamentView,
+    SessionView,
+)
 
 
 # BASEURL + /api/game-management/
