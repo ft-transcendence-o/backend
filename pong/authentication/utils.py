@@ -1,6 +1,7 @@
 from django.db import transaction, IntegrityError
 from .models import User, OTPSecret
 from .crypto import AESCipher
+from .constants import TOKEN_EXPIRES
 import logging
 
 

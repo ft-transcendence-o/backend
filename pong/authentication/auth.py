@@ -19,6 +19,7 @@ from authentication.decorators import (
 )
 from authentication.models import User, OTPSecret, OTPLockInfo
 from authentication.utils import get_user_data
+from authentication.constants import *
 
 
 logger = logging.getLogger(__name__)

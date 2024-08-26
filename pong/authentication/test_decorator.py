@@ -6,6 +6,7 @@ import json
 import jwt
 from authentication.decorators import token_required
 from authentication.models import OTPSecret, User, OTPLockInfo
+from authentication.constants import JWT_SECRET
 
 
 # TODO: need to set test env["JWT_SECRET"] for unittest
