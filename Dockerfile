@@ -11,7 +11,7 @@ RUN mkdir logs
 RUN touch logs/debug.log
 
 RUN echo '#!/bin/bash\n\n\
-python manage.py makemigrations authentication\n\
+python manage.py makemigrations auth\n\
 python manage.py makemigrations game\n\
 python manage.py migrate\n\
 python manage.py collectstatic --noinput\n\
