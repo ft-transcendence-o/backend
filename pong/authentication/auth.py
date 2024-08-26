@@ -5,6 +5,7 @@ from django.utils import timezone
 from django.views import View
 from django.db import transaction, DatabaseError
 from os import getenv
+from datetime import timedelta
 import aiohttp
 import pyotp
 import jwt
@@ -204,6 +205,7 @@ class OAuthView(View):
     def create_jwt_token(self, access_token, user_id):
         return jwt.encode(
             {
+                "custom_exp": timezone.now() + timedelta(seconds=JWT_EXPIRED),
                 "access_token": access_token,
                 "user_id": user_id,
                 "otp_verified": False,
@@ -302,6 +304,7 @@ class OTPView(View):
         response = JsonResponse({"success": "OTP authentication verified"})
         encoded_jwt = jwt.encode(
             {
+                "custom_exp": timezone.now() + JWT_EXPIRED,
                 "access_token": decoded_jwt.get("access_token"),
                 "user_id": decoded_jwt.get("user_id"),
                 "otp_verified": True,
