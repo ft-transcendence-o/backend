@@ -56,7 +56,7 @@ def auth_decorator_factory(check_otp=False):
             except:
                 return JsonResponse({"error": "Failed refresh access token"})
 
-            user_data = await get_user_data(user_id)
+            user_data = await get_user_data(decoded_jwt.get("user_id"))
             # 권한에 문제가 없을 경우 response는 None
             response = check_user_authorization(check_otp, update_jwt_data, user_data)
             if not response:
