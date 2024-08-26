@@ -7,9 +7,7 @@ from authentication.views import (
     OAuthView,
     OTPView,
 )
-from authentication.constants import (
-    MAX_ATTEMPTS
-)
+from authentication.constants import MAX_ATTEMPTS
 from unittest.mock import patch, MagicMock
 import json
 import jwt

@@ -14,20 +14,17 @@ class TokenRequiredDecoratorTests(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
         self.decoded_jwt = {
-                "access_token": "access_token",
-                "user_id": 123,
-                "otp_verified": False,
-            }
+            "access_token": "access_token",
+            "user_id": 123,
+            "otp_verified": False,
+        }
         self.valid_jwt = jwt.encode(
             self.decoded_jwt,
             JWT_SECRET,
             algorithm="HS256",
         )
 
-        self.invalid_decoded_jwt = {
-            "access_token": "access_token",
-            "otp_verified": False
-            }
+        self.invalid_decoded_jwt = {"access_token": "access_token", "otp_verified": False}
         self.invalid_jwt = jwt.encode(
             self.invalid_decoded_jwt,
             JWT_SECRET,
@@ -79,9 +76,7 @@ class TokenRequiredDecoratorTests(TestCase):
         request.COOKIES["jwt"] = self.valid_jwt
         response = await self.dummy_view(request)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            json.loads(response.content.decode("utf-8")), self.decoded_jwt
-        )
+        self.assertEqual(json.loads(response.content.decode("utf-8")), self.decoded_jwt)
 
 
 class OTPTest(TestCase):

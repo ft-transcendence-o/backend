@@ -74,7 +74,8 @@ class OAuthView(View):
         encoded_jwt = self.create_jwt_token(tokens["access_token"], user_info["user"].id)
         redirect_url = self.get_redirect_url(
             # TODO: it can be shrink
-            user_info["otp"].need_otp, user_info["otp"].is_verified
+            user_info["otp"].need_otp,
+            user_info["otp"].is_verified,
         )
         return self.create_redirect_response(redirect_url, encoded_jwt)
 
@@ -159,7 +160,7 @@ class OAuthView(View):
             self.set_cache(user_data, otp_data, tokens)
             return True, {"user": user_data, "otp": otp_data}
         except DatabaseError as e:
-            return False ,str(e)
+            return False, str(e)
         except transaction.TransactionManagementError as e:
             return False, str(e)
 

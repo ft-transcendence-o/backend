@@ -18,6 +18,7 @@ from authentication.constants import (
     API_URL,
 )
 
+
 def auth_decorator_factory(check_otp=False):
     def decorator(func):
         @wraps(func)
@@ -67,6 +68,7 @@ def auth_decorator_factory(check_otp=False):
 
     return decorator
 
+
 def check_user_authorization(check_otp, decoded_jwt, user_data):
     otp_verified = decoded_jwt.get("otp_verified")
     if check_otp and otp_verified == False:
@@ -83,6 +85,7 @@ def check_user_authorization(check_otp, decoded_jwt, user_data):
         return JsonResponse({"error": "Already passed OTP authentication"}, status=403)
     return None
 
+
 async def refresh_access_token(request, decoded_jwt):
     user_id = decoded_jwt.get("user_id")
     tokens = await fetch_new_tokens(user_id)
@@ -92,8 +95,9 @@ async def refresh_access_token(request, decoded_jwt):
         "access_token": tokens["access_token"],
         "user_id": decoded_jwt.get("user_id"),
         "otp_verified": decoded_jwt.get("otp_verified"),
-    },
+    }
     return update_jwt_data
+
 
 async def fetch_new_tokens(user_id):
     refresh_token = await get_refresh_token_from_db(user_id)
@@ -124,9 +128,11 @@ def get_refresh_token_from_db(user_id):
     user = User.objects.only("refresh_token").get(id=user_id)
     return user.refresh_token
 
+
 @sync_to_async
 def set_refresh_token_in_db(user_id, refresh_token):
     return User.objects.filter(id=user_id).update(refresh_token=refresh_token)
+
 
 login_required = auth_decorator_factory(check_otp=True)
 token_required = auth_decorator_factory(check_otp=False)
