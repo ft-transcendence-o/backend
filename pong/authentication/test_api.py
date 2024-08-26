@@ -6,10 +6,6 @@ from authentication.models import OTPSecret, User
 from authentication.auth import (
     OAuthView,
     OTPView,
-    MAX_ATTEMPTS,
-    LOCK_ACCOUNT,
-    JWT_SECRET,
-    FRONT_BASE_URL,
 )
 from unittest.mock import patch, MagicMock
 import json
