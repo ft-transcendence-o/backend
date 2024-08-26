@@ -7,11 +7,11 @@ import json
 import jwt
 
 from .models import OTPSecret, User
+from .constants import MAX_ATTEMPTS
 from .views import (
     OAuthView,
     OTPView,
 )
-from .constants import MAX_ATTEMPTS
 
 
 class UserInfoTestCase(TestCase):

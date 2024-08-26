@@ -6,15 +6,29 @@ from datetime import timedelta
 import json
 import jwt
 
-from .decorators import token_required
+from .decorators import token_required, login_required
 from .models import OTPSecret, User, OTPLockInfo
-from .constants import JWT_SECRET
+from .constants import JWT_SECRET, JWT_EXPIRED
 
 
-class AuthDecoratorFactoryTestCase(TestCase):
+class AuthDecoratorTestCase(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
         self.user = User.objects.create(id=1, refresh_token='test_refresh_token')
+        self.user_data = {
+            "email": "user1@example.com",
+            "login": "login1",
+            "secret": "secret",
+            "is_verified": True,
+            "need_otp": True,
+        }
+        new_custom_exp = (timezone.now() + timedelta(seconds=JWT_EXPIRED)).timestamp()
+        self.update_jwt = {
+            "custom_exp": new_custom_exp,
+            "access_token": "new_access_token",
+            "user_id": 1,
+            "otp_verified": True
+        }
 
     def create_jwt(self, custom_exp, access_token, user_id, otp_verified):
         payload = {
@@ -25,93 +39,182 @@ class AuthDecoratorFactoryTestCase(TestCase):
         }
         return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
 
-    @patch('authentication.views.refresh_access_token')
-    @patch('authentication.views.get_user_data')
-    async def test_auth_decorator_valid_token(self, mock_get_user_data, mock_refresh_access_token):
-        @auth_decorator_factory(check_otp=True)
-        async def dummy_view(self, request, decoded_jwt):
-            return JsonResponse({"success": True})
+    @token_required
+    async def dummy_view(self, request, decoded_jwt):
+        return JsonResponse({"success": True})
 
-        custom_exp = (timezone.now() + timedelta(seconds=300)).timestamp()
-        jwt_token = self.create_jwt(custom_exp, 'valid_access_token', 1, True)
-        request = self.factory.get('/dummy/')
-        request.COOKIES['jwt'] = jwt_token
+    async def test_no_jwt_in_request(self):
+        request = self.factory.get("/duumy-url")
+        response = await self.dummy_view(request)
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(
+            json.loads(response.content.decode("utf-8"))["error"], "No jwt in request"
+            )
 
-        mock_get_user_data.return_value = {"is_verified": True}
+    async def test_auth_decorator_invalid_jwt(self):
+        request = self.factory.get('/dummy-url')
+        request.COOKIES['jwt'] = 'invalid_jwt_token'
+        response = await self.dummy_view(request)
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(
+            json.loads(response.content.decode("utf-8"))["error"], "Decoding jwt failed"
+            )
 
-        response = await dummy_view(None, request)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"success": True})
+    async def test_auth_decorator_invalid_key_in_jwt(self):
+        request = self.factory.get('/dummy-url')
+        payload = {
+            "access_token": "access_token",
+            "dummy_key": "dummy_value",
+        }
+        invalid_token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+        request.COOKIES['jwt'] = invalid_token
+        response = await self.dummy_view(request)
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(
+            json.loads(response.content.decode("utf-8"))["error"], "Invalid jwt error"
+            )
 
-    @patch('authentication.views.refresh_access_token')
-    @patch('authentication.views.get_user_data')
-    async def test_auth_decorator_expired_token(self, mock_get_user_data, mock_refresh_access_token):
-        @auth_decorator_factory(check_otp=True)
-        async def dummy_view(self, request, decoded_jwt):
-            return JsonResponse({"success": True})
+    @patch('auth.decorators.refresh_access_token')
+    async def test_auth_decorator_refresh_fail(self, mock_refresh_access_token):
+        expired_custom_exp = (timezone.now() - timedelta(seconds=1)).timestamp()
+        expired_token = self.create_jwt(expired_custom_exp, 'expired_access_token', 1, True)
+        request = self.factory.get('/dummy-url')
+        request.COOKIES['jwt'] = expired_token
 
-        custom_exp = (timezone.now() - timedelta(seconds=300)).timestamp()
-        jwt_token = self.create_jwt(custom_exp, 'expired_access_token', 1, True)
-        request = self.factory.get('/dummy/')
-        request.COOKIES['jwt'] = jwt_token
+        mock_refresh_access_token.side_effect = Exception("Token refresh failed")
+
+        response = await self.dummy_view(request)
+
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(
+            json.loads(response.content.decode("utf-8"))["error"],
+            "Failed refresh access token"
+        )
+        mock_refresh_access_token.assert_called_once()
+
+    @patch('auth.decorators.refresh_access_token')
+    @patch('auth.decorators.get_user_data')
+    @patch('auth.decorators.check_user_authorization')
+    async def test_auth_decorator_expired_token(self, mock_check_user_authorization, mock_get_user_data, mock_refresh_access_token):
+        expired_custom_exp = (timezone.now() - timedelta(seconds=1)).timestamp()
+        expired_token = self.create_jwt(expired_custom_exp, 'expired_access_token', 1, True)
+        request = self.factory.get('/dummy-url')
+        request.COOKIES['jwt'] = expired_token
 
         new_custom_exp = (timezone.now() + timedelta(seconds=JWT_EXPIRED)).timestamp()
-        mock_refresh_access_token.return_value = {
+        new_token_data = {
             "custom_exp": new_custom_exp,
             "access_token": "new_access_token",
             "user_id": 1,
             "otp_verified": True
         }
-        mock_get_user_data.return_value = {"is_verified": True}
 
-        response = await dummy_view(None, request)
+        mock_refresh_access_token.return_value = new_token_data
+        mock_get_user_data.return_value = self.user_data
+        mock_check_user_authorization.return_value = None
+
+        response = await self.dummy_view(request)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"success": True})
+        self.assertEqual(
+            json.loads(response.content.decode("utf-8"))["success"],
+            True
+        )
+
         mock_refresh_access_token.assert_called_once()
+        mock_get_user_data.assert_called_once()
 
-    async def test_auth_decorator_no_jwt(self):
-        @auth_decorator_factory(check_otp=True)
+        self.assertIn('jwt', response.cookies)
+        new_jwt = response.cookies['jwt'].value
+        decoded_new_jwt = jwt.decode(new_jwt, JWT_SECRET, algorithms=["HS256"])
+        self.assertEqual(decoded_new_jwt['access_token'], "new_access_token")
+
+    @patch('auth.decorators.refresh_access_token')
+    @patch('auth.decorators.get_user_data')
+    async def test_auth_decorator_valid_token(self, mock_get_user_data, mock_refresh_access_token):
+        custom_exp = (timezone.now() + timedelta(seconds=JWT_EXPIRED)).timestamp()
+        token = self.create_jwt(custom_exp, 'valid_access_token', 1, True)
+        request = self.factory.get('/dummy-url')
+        request.COOKIES['jwt'] = token
+
+        mock_refresh_access_token.return_value = self.update_jwt
+        mock_get_user_data.return_value = self.user_data
+
+        response = await self.dummy_view(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            json.loads(response.content.decode("utf-8")), {"success": True}
+            )
+
+    @patch('auth.decorators.refresh_access_token')
+    @patch('auth.decorators.get_user_data')
+    async def test_token_required_authorization_fail(self, mock_get_user_data, mock_refresh_access_token):
+        expired_custom_exp = (timezone.now() - timedelta(seconds=1)).timestamp()
+        expired_token = self.create_jwt(expired_custom_exp, 'expired_access_token', 1, True)
+        request = self.factory.get('/dummy-url')
+        request.COOKIES['jwt'] = expired_token
+
+        new_custom_exp = (timezone.now() + timedelta(seconds=JWT_EXPIRED)).timestamp()
+        new_token_data = {
+            "custom_exp": new_custom_exp,
+            "access_token": "new_access_token",
+            "user_id": 1,
+            "otp_verified": True
+        }
+
+        mock_refresh_access_token.return_value = new_token_data
+        mock_get_user_data.return_value = self.user_data
+
+        response = await self.dummy_view(request)
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(
+            json.loads(response.content.decode("utf-8"))["error"],
+            "Already passed OTP authentication"
+        )
+
+        mock_refresh_access_token.assert_called_once()
+        mock_get_user_data.assert_called_once()
+
+        self.assertIn('jwt', response.cookies)
+        new_jwt = response.cookies['jwt'].value
+        decoded_new_jwt = jwt.decode(new_jwt, JWT_SECRET, algorithms=["HS256"])
+        self.assertEqual(decoded_new_jwt['access_token'], "new_access_token")
+
+    @patch('auth.decorators.refresh_access_token')
+    @patch('auth.decorators.get_user_data')
+    async def test_login_required_authorization_fail(self, mock_get_user_data, mock_refresh_access_token):
+        @login_required
         async def dummy_view(self, request, decoded_jwt):
             return JsonResponse({"success": True})
+        expired_custom_exp = (timezone.now() - timedelta(seconds=1)).timestamp()
+        expired_token = self.create_jwt(expired_custom_exp, 'expired_access_token', 1, True)
+        request = self.factory.get('/dummy-url')
+        request.COOKIES['jwt'] = expired_token
 
-        request = self.factory.get('/dummy/')
-        response = await dummy_view(None, request)
-        self.assertEqual(response.status_code, 401)
-        self.assertEqual(response.json(), {"error": "No jwt in request"})
+        new_custom_exp = (timezone.now() + timedelta(seconds=JWT_EXPIRED)).timestamp()
+        new_token_data = {
+            "custom_exp": new_custom_exp,
+            "access_token": "new_access_token",
+            "user_id": 1,
+            "otp_verified": False
+        }
 
-    async def test_auth_decorator_invalid_jwt(self):
-        @auth_decorator_factory(check_otp=True)
-        async def dummy_view(self, request, decoded_jwt):
-            return JsonResponse({"success": True})
-
-        request = self.factory.get('/dummy/')
-        request.COOKIES['jwt'] = 'invalid_jwt_token'
-        response = await dummy_view(None, request)
-        self.assertEqual(response.status_code, 401)
-        self.assertEqual(response.json(), {"error": "Decoding jwt failed"})
-
-    @patch('authentication.views.refresh_access_token')
-    @patch('authentication.views.get_user_data')
-    async def test_auth_decorator_otp_not_verified(self, mock_get_user_data, mock_refresh_access_token):
-        @auth_decorator_factory(check_otp=True)
-        async def dummy_view(self, request, decoded_jwt):
-            return JsonResponse({"success": True})
-
-        custom_exp = (timezone.now() + timedelta(seconds=300)).timestamp()
-        jwt_token = self.create_jwt(custom_exp, 'valid_access_token', 1, False)
-        request = self.factory.get('/dummy/')
-        request.COOKIES['jwt'] = jwt_token
-
-        mock_get_user_data.return_value = {"is_verified": True}
+        mock_refresh_access_token.return_value = new_token_data
+        mock_get_user_data.return_value = self.user_data
 
         response = await dummy_view(None, request)
         self.assertEqual(response.status_code, 403)
-        self.assertEqual(response.json(), {
-            "error": "Need OTP authentication",
-            "otp_verified": False,
-            "show_otp_qr": True
-        })
+        self.assertEqual(
+            json.loads(response.content.decode("utf-8"))["error"],
+            "Need OTP authentication"
+        )
 
+        mock_refresh_access_token.assert_called_once()
+        mock_get_user_data.assert_called_once()
+
+        self.assertIn('jwt', response.cookies)
+        new_jwt = response.cookies['jwt'].value
+        decoded_new_jwt = jwt.decode(new_jwt, JWT_SECRET, algorithms=["HS256"])
+        self.assertEqual(decoded_new_jwt['access_token'], "new_access_token")
 
 class OTPTest(TestCase):
     def setUp(self):

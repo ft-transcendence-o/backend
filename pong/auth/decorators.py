@@ -54,14 +54,16 @@ def auth_decorator_factory(check_otp=False):
             try:
                 update_jwt_data = await refresh_access_token(request, decoded_jwt)
             except:
-                return JsonResponse({"error": "Failed refresh access token"})
+                return JsonResponse({"error": "Failed refresh access token"}, status=500)
 
-            user_data = await get_user_data(decoded_jwt.get("user_id"))
+            user_data = await get_user_data(update_jwt_data.get("user_id"))
             # 권한에 문제가 없을 경우 response는 None
             response = check_user_authorization(check_otp, update_jwt_data, user_data)
             if not response:
-                response = await func(self, request, decoded_jwt, *args, **kwargs)
-            response.set_cookie("jwt", encoded_jwt, httponly=True, secure=True, samesite="Lax")
+                response = await func(self, request, update_jwt_data, *args, **kwargs)
+
+            new_jwt = jwt.encode(update_jwt_data, JWT_SECRET, algorithm="HS256")
+            response.set_cookie("jwt", new_jwt, httponly=True, secure=True, samesite="Lax")
             return response
 
         return wrapper
