@@ -1,4 +1,9 @@
 def get_default_session_data(user_id, mode):
+    """
+    cache에 기본적으로 저장되는 session data
+
+    :param mode: Tournament or Normal
+    """
     data = {
         "user_id": user_id,
         "players_name": ["player1", "player2"],
