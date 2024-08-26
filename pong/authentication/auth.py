@@ -15,9 +15,10 @@ import logging
 from authentication.decorators import (
     token_required,
     login_required,
-    token_refresh_if_invalid,
+    refresh_access_token,
 )
 from authentication.models import User, OTPSecret, OTPLockInfo
+from authentication.utils import get_user_data
 
 
 logger = logging.getLogger(__name__)
@@ -167,8 +168,6 @@ class OAuthView(View):
             "login": user_data.login,
             "secret": otp_data.secret,
             "is_verified": otp_data.is_verified,
-            "access_token": tokens["access_token"],
-            "refresh_token": tokens["refresh_token"],
             "need_otp": otp_data.need_otp,
         }
         cache.set(f"user_data_{user_data.id}", cache_value, TOKEN_EXPIRES)
@@ -231,29 +230,16 @@ class QRcodeView(View):
         """
         user_id = decoded_jwt.get("user_id")
         try:
-            user_data = await self.get_user_data(user_id)
-            secret = self.get_user_secret(user_data)
+            user_data = await get_user_data(user_id)
             if user_data["is_verified"] == True:
                 return JsonResponse({"error": "Can't show QRcode"}, status=400)
-            uri = self.generate_otp_uri(user_data, secret)
+            uri = self.generate_otp_uri(user_data)
             return JsonResponse({"otpauth_uri": uri}, status=200)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
 
-    async def get_user_data(self, user_id):
-        user_data = await cache.aget(f"user_data_{user_id}")
-        if not user_data:
-            raise Exception("User data not found")
-        return user_data
-
-    def get_user_secret(self, user_data):
-        secret = user_data.get("secret")
-        if not secret:
-            raise Exception("User secret not found")
-        return secret
-
-    def generate_otp_uri(self, user_data, secret):
-        return pyotp.totp.TOTP(secret).provisioning_uri(
+    def generate_otp_uri(self, user_data):
+        return pyotp.totp.TOTP(user_data["secret"]).provisioning_uri(
             name=user_data["email"], issuer_name="pong_game"
         )
 
@@ -424,7 +410,8 @@ class UserInfo(View):
         :cookie jwt: 인증을 위한 JWT
         """
         user_id = decoded_jwt.get("user_id")
-        user_info = await cache.aget(f"user_data_{user_id}")
+        user_info = await get_user_data(user_id)
+        # TODO: can modify?
         if not user_info:
             return JsonResponse({"error": "Invalid token"}, status=401)
         data = {

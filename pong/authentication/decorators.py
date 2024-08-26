@@ -1,35 +1,12 @@
 from asgiref.sync import sync_to_async
 from django.http import JsonResponse, HttpResponseRedirect
-from django.core.cache import cache
 from functools import wraps
 from os import getenv
 import aiohttp
 import jwt
 
 from authentication.models import User
-
-API_URL = getenv("API_URL")
-JWT_SECRET = getenv("JWT_SECRET")
-INTRA_UID = getenv("INTRA_UID")
-INTRA_SECRET_KEY = getenv("INTRA_SECRET_KEY")
-REDIRECT_URI = getenv("REDIRECT_URI")
-STATE = getenv("STATE")
-
-
-def validate_jwt(request):
-    """
-    JWT 검증 및 디코딩 함수
-    """
-    encoded_jwt = request.COOKIES.get("jwt")
-    if not encoded_jwt:
-        return None, JsonResponse({"error": "No jwt in request"}, status=401)
-
-    try:
-        decoded_jwt = jwt.decode(encoded_jwt, JWT_SECRET, algorithms=["HS256"])
-    except:
-        return None, JsonResponse({"error": "Decoding jwt failed"}, status=401)
-
-    return decoded_jwt, None
+from authentication.utils import get_user_data
 
 
 def auth_decorator_factory(check_otp=False):
