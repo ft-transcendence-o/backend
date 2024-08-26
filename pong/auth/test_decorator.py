@@ -101,15 +101,7 @@ class AuthDecoratorTestCase(TestCase):
         request = self.factory.get('/dummy-url')
         request.COOKIES['jwt'] = expired_token
 
-        new_custom_exp = (timezone.now() + timedelta(seconds=JWT_EXPIRED)).timestamp()
-        new_token_data = {
-            "custom_exp": new_custom_exp,
-            "access_token": "new_access_token",
-            "user_id": 1,
-            "otp_verified": True
-        }
-
-        mock_refresh_access_token.return_value = new_token_data
+        mock_refresh_access_token.return_value = self.update_jwt
         mock_get_user_data.return_value = self.user_data
         mock_check_user_authorization.return_value = None
 
@@ -153,15 +145,7 @@ class AuthDecoratorTestCase(TestCase):
         request = self.factory.get('/dummy-url')
         request.COOKIES['jwt'] = expired_token
 
-        new_custom_exp = (timezone.now() + timedelta(seconds=JWT_EXPIRED)).timestamp()
-        new_token_data = {
-            "custom_exp": new_custom_exp,
-            "access_token": "new_access_token",
-            "user_id": 1,
-            "otp_verified": True
-        }
-
-        mock_refresh_access_token.return_value = new_token_data
+        mock_refresh_access_token.return_value = self.update_jwt
         mock_get_user_data.return_value = self.user_data
 
         response = await self.dummy_view(request)
