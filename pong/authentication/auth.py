@@ -36,19 +36,6 @@ logger = logging.getLogger(__name__)
         https://api.intra.42.fr/v2/me
 """
 
-TOKEN_EXPIRES = 7000
-LOCK_ACCOUNT = 900
-MAX_ATTEMPTS = 5
-API_URL = getenv("API_URL")
-JWT_SECRET = getenv("JWT_SECRET")
-INTRA_UID = getenv("INTRA_UID")
-INTRA_SECRET_KEY = getenv("INTRA_SECRET_KEY")
-REDIRECT_URI = getenv("REDIRECT_URI")
-STATE = getenv("STATE")
-AUTH_PAGE = getenv("AUTH_PAGE")
-FRONT_BASE_URL = getenv("FRONT_BASE_URL")
-
-
 """
 backend 인증 로직
 1. OAuthView에 GET요청을 보낸다.
