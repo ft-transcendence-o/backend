@@ -392,8 +392,10 @@ class StatusView(View):
             return JsonResponse({"error": "Decoding jwt failed"}, status=401)
 
         user_id = decoded_jwt.get("user_id")
-        if response := await token_refresh_if_invalid(request, decoded_jwt, user_id):
-            return response
+        try:
+            await refresh_access_token(request, decoded_jwt)
+        except:
+            return JsonResponse({"error": "Failed refresh access token"})
 
         otp_verified = decoded_jwt.get("otp_verified")
         return JsonResponse(
