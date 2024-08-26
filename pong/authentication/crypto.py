@@ -5,6 +5,7 @@ from base64 import urlsafe_b64encode, urlsafe_b64decode
 
 
 class AESCipher:
+    HASH_SALT = getenv("HASH_SALT")
     key = str.encode(HASH_SALT)
 
     @staticmethod
