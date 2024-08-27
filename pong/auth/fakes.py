@@ -39,11 +39,19 @@ FAKE_USER = {
     "image_link": "http://example.com/image.jpg",
 }
 
-FAKE_DECODED_JWT = {
+FAKE_DECODED_JWT_PASS_OTP = {
     "custom_exp": 1234567890,
     "access_token": "access_token",
     "user_id": 1,
     "otp_verified": True,
 }
 
-FAKE_JWT = jwt.encode(FAKE_DECODED_JWT, JWT_SECRET, algorithm="HS256")
+FAKE_DECODED_JWT_NO_OTP = {
+    "custom_exp": 1234567890,
+    "access_token": "access_token",
+    "user_id": 1,
+    "otp_verified": False,
+}
+
+FAKE_JWT_NO_OTP = jwt.encode(FAKE_DECODED_JWT_NO_OTP, JWT_SECRET, algorithm="HS256")
+FAKE_JWT_PASS_OTP = jwt.encode(FAKE_DECODED_JWT_PASS_OTP, JWT_SECRET, algorithm="HS256")
