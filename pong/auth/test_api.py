@@ -64,20 +64,13 @@ class UserInfoTestCase(TestCase):
     def setUp(self):
         self.client = AsyncClient()
         self.url = reverse("user_info")
-        self.user_data = {
-            "id": 1,
-            "email": "test@example.com",
-            "login": "testuser",
-            "usual_full_name": "Test User",
-            "image_link": "http://example.com/image.jpg",
-        }
+        self.user_data = FAKE_USER
 
     @patch('auth.views.get_user_data')
     async def test_get_invalid_token(self, mock_get_user_data):
         mock_get_user_data.return_value = None
 
         response = await self.client.get(self.url)
-
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.json()["error"], "Invalid token")
 
@@ -86,7 +79,6 @@ class UserInfoTestCase(TestCase):
         mock_get_user_data.return_value = self.user_data
 
         response = await self.client.get(self.url)
-
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["email"], self.user_data["email"])
         self.assertEqual(response.json()["login"], self.user_data["login"])
