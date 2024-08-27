@@ -9,6 +9,7 @@ from functools import wraps
 
 from .models import OTPSecret, User
 from .constants import MAX_ATTEMPTS
+from .fakes import fake_decorators, FAKE_USER, FAKE_JWT
 
 fake_decoded_jwt = {
     "user_id": 1,
