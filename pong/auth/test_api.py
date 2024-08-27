@@ -19,6 +19,7 @@ with fake_decorators():
         StatusView,
     )
 
+
 class StatusTestCase(TestCase):
     """Integration tests for Status View class"""
 
@@ -29,14 +30,14 @@ class StatusTestCase(TestCase):
         self.user_data = FAKE_USER
 
     async def test_no_jwt_cookie(self):
-        request = self.factory.get('/auth-status/')
+        request = self.factory.get("/auth-status/")
         response = await self.view(request)
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.content, b'{"error": "No jwt in request"}')
 
     async def test_invalid_jwt(self):
-        request = self.factory.get('/auth-status/')
-        request.COOKIES['jwt'] = 'invalid_jwt'
+        request = self.factory.get("/auth-status/")
+        request.COOKIES["jwt"] = "invalid_jwt"
         response = await self.view(request)
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.content, b'{"error": "Decoding jwt failed"}')
@@ -44,19 +45,24 @@ class StatusTestCase(TestCase):
     async def test_valid_jwt_otp_not_verified(self):
         valid_jwt = FAKE_JWT
         valid_jwt["otp_verified"] = False
-        request = self.factory.get('/auth-status/')
-        request.COOKIES['jwt'] = valid_jwt
+        request = self.factory.get("/auth-status/")
+        request.COOKIES["jwt"] = valid_jwt
         response = await self.view(request)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content, b'{"access_token_valid": true, "otp_authenticated": false}')
+        self.assertEqual(
+            response.content, b'{"access_token_valid": true, "otp_authenticated": false}'
+        )
 
     async def test_valid_jwt_otp_verified(self):
         valid_jwt = FAKE_JWT
-        request = self.factory.get('/auth-status/')
-        request.COOKIES['jwt'] = valid_jwt
+        request = self.factory.get("/auth-status/")
+        request.COOKIES["jwt"] = valid_jwt
         response = await self.view(request)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content, b'{"access_token_valid": true, "otp_authenticated": true}')
+        self.assertEqual(
+            response.content, b'{"access_token_valid": true, "otp_authenticated": true}'
+        )
+
 
 class UserInfoTestCase(TestCase):
     """Integration tests for UserInfo View class"""
@@ -66,7 +72,7 @@ class UserInfoTestCase(TestCase):
         self.url = reverse("user_info")
         self.user_data = FAKE_USER
 
-    @patch('auth.views.get_user_data')
+    @patch("auth.views.get_user_data")
     async def test_get_invalid_token(self, mock_get_user_data):
         mock_get_user_data.return_value = None
 
@@ -74,7 +80,7 @@ class UserInfoTestCase(TestCase):
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.json()["error"], "Invalid token")
 
-    @patch('auth.views.get_user_data')
+    @patch("auth.views.get_user_data")
     async def test_get_success(self, mock_get_user_data):
         mock_get_user_data.return_value = self.user_data
 
@@ -88,7 +94,7 @@ class UserInfoTestCase(TestCase):
 
     #     정상적으로 유저 정보를 반환하는 경우
     #     """
-        
+
     #     with patch("auth.views.login_required") as mock_login_required:
 
     #         mock_validate_jwt.return_value = {"access_token": self.valid_token}, False
