@@ -11,31 +11,52 @@ from .models import OTPSecret, User
 from .constants import MAX_ATTEMPTS
 from .fakes import fake_decorators, FAKE_USER, FAKE_JWT
 
-fake_decoded_jwt = {
-    "user_id": 1,
-    "access_token": "access_token",
-    "custom_exp": 1234567890,
-    "otp_verified": True
-}
+with fake_decorators():
+    from .views import (
+        OAuthView,
+        OTPView,
+        UserInfo,
+        StatusView,
+    )
 
-def mock_decorator(check_otp):
-    def decorator(f):
-        @wraps(f)
-        async def decorated_function(self, request, *args, **kwargs):
-            return await f(self, request, fake_decoded_jwt, *args, **kwargs)
-        return decorated_function
-    return decorator
+class StatusTestCase(TestCase):
+    """Integration tests for Status View class"""
 
-mock_login_required = mock_decorator(check_otp=True)
-mock_token_required = mock_decorator(check_otp=False)
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.view = StatusView.as_view()
+        self.url = reverse("auth_status")
+        self.user_data = FAKE_USER
 
-with patch('auth.decorators.login_required', mock_login_required):
-    with patch('auth.decorators.token_required', mock_token_required):
-        from .views import (
-            OAuthView,
-            OTPView,
-            UserInfo
-        )
+    async def test_no_jwt_cookie(self):
+        request = self.factory.get('/auth-status/')
+        response = await self.view(request)
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.content, b'{"error": "No jwt in request"}')
+
+    async def test_invalid_jwt(self):
+        request = self.factory.get('/auth-status/')
+        request.COOKIES['jwt'] = 'invalid_jwt'
+        response = await self.view(request)
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.content, b'{"error": "Decoding jwt failed"}')
+
+    async def test_valid_jwt_otp_not_verified(self):
+        valid_jwt = FAKE_JWT
+        valid_jwt["otp_verified"] = False
+        request = self.factory.get('/auth-status/')
+        request.COOKIES['jwt'] = valid_jwt
+        response = await self.view(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'{"access_token_valid": true, "otp_authenticated": false}')
+
+    async def test_valid_jwt_otp_verified(self):
+        valid_jwt = FAKE_JWT
+        request = self.factory.get('/auth-status/')
+        request.COOKIES['jwt'] = valid_jwt
+        response = await self.view(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b'{"access_token_valid": true, "otp_authenticated": true}')
 
 class UserInfoTestCase(TestCase):
     """Integration tests for UserInfo View class"""
