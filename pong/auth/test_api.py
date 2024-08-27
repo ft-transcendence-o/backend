@@ -5,11 +5,16 @@ from datetime import timedelta
 from unittest.mock import patch, MagicMock, AsyncMock
 import json
 import jwt
-from functools import wraps
+import pyotp
 
-from .models import OTPSecret, User
-from .constants import MAX_ATTEMPTS
-from .fakes import fake_decorators, FAKE_USER, FAKE_JWT
+from .models import OTPLockInfo, OTPSecret, User
+from .constants import MAX_ATTEMPTS, JWT_SECRET
+from .fakes import (
+    fake_decorators,
+    FAKE_USER,
+    FAKE_JWT_NO_OTP,
+    FAKE_JWT_PASS_OTP
+)
 
 with fake_decorators():
     from .views import (
@@ -18,6 +23,91 @@ with fake_decorators():
         UserInfo,
         StatusView,
     )
+
+
+class OTPTestCase(TestCase):
+    """Integration tests for OTP View class"""
+
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.view = OTPView()
+        self.user_id = 1
+
+        self.user = User.objects.create(**FAKE_USER)
+        self.otp_secret = OTPSecret.objects.create(
+            user_id=self.user_id,
+            secret="TESTSECRET",
+            is_verified=False
+        )
+        self.otp_lock_info = OTPLockInfo.objects.create(
+            otp_secret=self.otp_secret,
+            attempts=0,
+            last_attempt=None,
+            is_locked=False
+        )
+
+    def create_request(self, input_password):
+        request = self.factory.post('/otp/verify', json.dumps({"input_password": input_password}), content_type='application/json')
+        request.COOKIES['jwt'] = FAKE_JWT_NO_OTP
+        return request
+
+    @patch('auth.views.OTPView.verify_otp')
+    async def test_successful_otp_verification(self, mock_verify_otp):
+        mock_verify_otp.return_value = True
+        request = self.create_request("right_otp")
+        response = await self.view.post(request)
+
+        # TODO: NEED CHECK COOKIE
+        self.assertIn("jwt", response.cookies)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(json.loads(response.content.decode('utf-8'))["success"], "OTP authentication verified")
+
+    @patch('auth.views.OTPView.verify_otp')
+    async def test_failed_otp_verification(self, mock_verify_otp):
+        mock_verify_otp.return_value = False
+        request = self.create_request("wrong_otp")
+        response = await self.view.post(request)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(json.loads(response.content.decode('utf-8'))["error"], "Incorrect password.")
+
+    async def test_account_locked(self):
+        self.otp_lock_info.is_locked = True
+        self.otp_lock_info.last_attempt = timezone.now()
+        await self.otp_lock_info.asave()
+
+        request = self.create_request("right_otp")
+        response = await self.view.post(request)
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(json.loads(response.content.decode('utf-8'))["error"], "Account is locked. try later")
+
+    async def test_max_attempts_exceeded(self):
+        self.otp_lock_info.attempts = MAX_ATTEMPTS - 1
+        await self.otp_lock_info.asave()
+
+        request = self.create_request("wrong_otp")
+        response = await self.view.post(request)
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(json.loads(response.content.decode('utf-8'))["error"], "Maximum number of attempts exceeded. Please try again after 15 minutes.")
+
+    async def test_no_otp_data(self):
+        await OTPSecret.objects.filter(user_id=self.user_id).adelete()
+        request = self.create_request("otp")
+        response = await self.view.post(request)
+        self.assertEqual(response.status_code, 500)
+        self.assertIn("Can't found OTP data", json.loads(response.content.decode('utf-8'))["error"])
+
+    @patch('auth.views.OTPView.verify_otp')
+    async def test_update_otp_success(self, mock_verify_otp):
+        mock_verify_otp.return_value = True
+        request = self.create_request("right_otp")
+        await self.view.post(request)
+
+        updated_otp_secret = await OTPSecret.objects.aget(user_id=self.user_id)
+        updated_otp_lock_info = await OTPLockInfo.objects.aget(otp_secret=updated_otp_secret)
+
+        self.assertTrue(updated_otp_secret.is_verified)
+        self.assertFalse(updated_otp_lock_info.is_locked)
+        self.assertEqual(updated_otp_lock_info.attempts, 0)
 
 
 class StatusTestCase(TestCase):
@@ -33,35 +123,32 @@ class StatusTestCase(TestCase):
         request = self.factory.get("/auth-status/")
         response = await self.view(request)
         self.assertEqual(response.status_code, 401)
-        self.assertEqual(response.content, b'{"error": "No jwt in request"}')
+        self.assertEqual(json.loads(response.content.decode('utf-8'))["error"], "No jwt in request")
 
     async def test_invalid_jwt(self):
         request = self.factory.get("/auth-status/")
         request.COOKIES["jwt"] = "invalid_jwt"
         response = await self.view(request)
         self.assertEqual(response.status_code, 401)
-        self.assertEqual(response.content, b'{"error": "Decoding jwt failed"}')
+        self.assertEqual(json.loads(response.content.decode('utf-8'))["error"], "Decoding jwt failed")
 
     async def test_valid_jwt_otp_not_verified(self):
-        valid_jwt = FAKE_JWT
-        valid_jwt["otp_verified"] = False
+        valid_jwt = FAKE_JWT_NO_OTP
         request = self.factory.get("/auth-status/")
         request.COOKIES["jwt"] = valid_jwt
         response = await self.view(request)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            response.content, b'{"access_token_valid": true, "otp_authenticated": false}'
-        )
+        self.assertEqual(json.loads(response.content.decode('utf-8'))["access_token_valid"], True)
+        self.assertEqual(json.loads(response.content.decode('utf-8'))["otp_authenticated"], False)
 
     async def test_valid_jwt_otp_verified(self):
-        valid_jwt = FAKE_JWT
+        valid_jwt = FAKE_JWT_PASS_OTP
         request = self.factory.get("/auth-status/")
         request.COOKIES["jwt"] = valid_jwt
         response = await self.view(request)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            response.content, b'{"access_token_valid": true, "otp_authenticated": true}'
-        )
+        self.assertEqual(json.loads(response.content.decode('utf-8'))["access_token_valid"], True)
+        self.assertEqual(json.loads(response.content.decode('utf-8'))["otp_authenticated"], True)
 
 
 class UserInfoTestCase(TestCase):
