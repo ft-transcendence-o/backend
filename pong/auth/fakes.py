@@ -31,6 +31,14 @@ def fake_decorators():
     )
 
 
+FAKE_USER_DATA = {
+    "login": "testuser",
+    "need_otp": True,
+    "is_verified": False,
+    "secret": "TESTSECRET",
+    "email": "test@example.com",
+}
+
 FAKE_USER = {
     "id": 1,
     "email": "test@example.com",
