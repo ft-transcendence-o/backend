@@ -1,12 +1,14 @@
 from asgiref.sync import sync_to_async
 from django.http import JsonResponse
 from django.core.cache import cache
-from auth.decorators import login_required
-from .utils import get_default_session_data
-from .models import Game, Tournament
 from django.views import View
 import json
 import logging
+
+from .utils import get_default_session_data
+from .models import Game, Tournament
+from auth.decorators import login_required
+
 
 logger = logging.getLogger(__name__)
 
@@ -29,28 +31,13 @@ class GameView(View):
         page_number = int(request.GET.get("page", 1))
         page_size = int(request.GET.get("size", 10))
 
-        count_games = sync_to_async(Game.objects.filter(user_id=user_id).count)
-        total_games = await count_games()
-
+        total_games = await sync_to_async(Game.objects.filter(user_id=user_id).count)()
         start = (page_number - 1) * page_size
         end = start + page_size
         games = await sync_to_async(list)(
             Game.objects.filter(user_id=user_id).order_by("-created_at")[start:end]
         )
-
-        response_data = []
-        for game in games:
-            game_data = {
-                "id": game.id,
-                "player1Nick": game.player1_nick,
-                "player2Nick": game.player2_nick,
-                "player1Score": game.player1_score,
-                "player2Score": game.player2_score,
-                "mode": game.mode,
-                "tournament_id": game.tournament_id,
-                "created_at": game.created_at.isoformat(),
-            }
-            response_data.append(game_data)
+        response_data = self.objects_to_dict(games)
 
         total_pages = (total_games + page_size - 1) // page_size
         has_next = page_number < total_pages
@@ -67,7 +54,6 @@ class GameView(View):
                     "total_items": total_games,
                 },
             },
-            safe=False,
         )
 
     @login_required
@@ -90,6 +76,21 @@ class GameView(View):
             return JsonResponse({"error": "Invalid JSON"}, status=400)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
+
+    def objects_to_dict(self, game_list):
+        return [
+            {
+                "id": game.id,
+                "player1Nick": game.player1_nick,
+                "player2Nick": game.player2_nick,
+                "player1Score": game.player1_score,
+                "player2Score": game.player2_score,
+                "mode": game.mode,
+                "tournament_id": game.tournament_id,
+                "created_at": game.created_at.isoformat(),
+            }
+            for game in game_list
+        ]
 
 
 class TournamentView(View):
