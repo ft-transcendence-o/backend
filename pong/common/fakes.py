@@ -31,6 +31,23 @@ def fake_decorators():
     )
 
 
+FAKE_NORMAL_GAME = {
+    "id": 12,
+    "user_id": 1,
+    "player1Nick": "player1",
+    "player2Nick": "player2",
+    "player1Score": "3",
+    "player2Score": "2",
+    "mode": "normal"
+}
+
+FAKE_TOURNAMENT_GAME = {
+    "user_id": 1,
+    "game1": 1,
+    "game2": 2,
+    "game3": 3,
+}
+
 FAKE_USER_DATA = {
     "login": "testuser",
     "need_otp": True,
