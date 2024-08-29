@@ -3,9 +3,12 @@ from channels.routing import URLRouter
 from django.test import TestCase
 from unittest.mock import patch, AsyncMock
 
-from .urls import websocket_urlpatterns
-from .consumers import GameConsumer
 from .utils import get_default_session_data
+from .consumers import GameConsumer
+from common.fakes import fake_decorators
+
+with fake_decorators():
+    from .urls import websocket_urlpatterns
 
 class GameConsumerTest(TestCase):
     @patch('game.consumers.NormalPongGame')
