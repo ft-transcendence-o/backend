@@ -41,7 +41,7 @@ class QRcodeViewTestCase(TestCase):
         response = await self.view.get(request)
 
         self.assertEqual(response.status_code, 200)
-        content = json.loads(response.content.decode("utf-8"))
+        content = json.loads(response.content)
         self.assertIn("otpauth_uri", content)
         self.assertIn("pong_game", content["otpauth_uri"])
         self.assertIn(quote("test@example.com"), content["otpauth_uri"])
@@ -55,7 +55,7 @@ class QRcodeViewTestCase(TestCase):
         response = await self.view.get(request)
 
         self.assertEqual(response.status_code, 400)
-        content = json.loads(response.content.decode("utf-8"))
+        content = json.loads(response.content)
         self.assertEqual(content["error"], "Can't show QRcode")
 
     def test_generate_otp_uri(self):
@@ -101,7 +101,7 @@ class OTPViewTestCase(TestCase):
         self.assertIn("jwt", response.cookies)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
-            json.loads(response.content.decode("utf-8"))["success"], "OTP authentication verified"
+            json.loads(response.content)["success"], "OTP authentication verified"
         )
 
     @patch("auth.views.OTPView.verify_otp")
@@ -111,7 +111,7 @@ class OTPViewTestCase(TestCase):
         response = await self.view.post(request)
         self.assertEqual(response.status_code, 400)
         self.assertEqual(
-            json.loads(response.content.decode("utf-8"))["error"], "Incorrect password."
+            json.loads(response.content)["error"], "Incorrect password."
         )
 
     async def test_account_locked(self):
@@ -123,7 +123,7 @@ class OTPViewTestCase(TestCase):
         response = await self.view.post(request)
         self.assertEqual(response.status_code, 403)
         self.assertEqual(
-            json.loads(response.content.decode("utf-8"))["error"], "Account is locked. try later"
+            json.loads(response.content)["error"], "Account is locked. try later"
         )
 
     async def test_max_attempts_exceeded(self):
@@ -134,7 +134,7 @@ class OTPViewTestCase(TestCase):
         response = await self.view.post(request)
         self.assertEqual(response.status_code, 403)
         self.assertEqual(
-            json.loads(response.content.decode("utf-8"))["error"],
+            json.loads(response.content)["error"],
             "Maximum number of attempts exceeded. Please try again after 15 minutes.",
         )
 
@@ -143,7 +143,7 @@ class OTPViewTestCase(TestCase):
         request = self.create_request("otp")
         response = await self.view.post(request)
         self.assertEqual(response.status_code, 500)
-        self.assertIn("Can't found OTP data", json.loads(response.content.decode("utf-8"))["error"])
+        self.assertIn("Can't found OTP data", json.loads(response.content)["error"])
 
     @patch("auth.views.OTPView.verify_otp")
     async def test_update_otp_success(self, mock_verify_otp):
@@ -172,7 +172,7 @@ class StatusViewTestCase(TestCase):
         request = self.factory.get("/auth-status/")
         response = await self.view(request)
         self.assertEqual(response.status_code, 401)
-        self.assertEqual(json.loads(response.content.decode("utf-8"))["error"], "No jwt in request")
+        self.assertEqual(json.loads(response.content)["error"], "No jwt in request")
 
     async def test_invalid_jwt(self):
         request = self.factory.get("/auth-status/")
@@ -180,7 +180,7 @@ class StatusViewTestCase(TestCase):
         response = await self.view(request)
         self.assertEqual(response.status_code, 401)
         self.assertEqual(
-            json.loads(response.content.decode("utf-8"))["error"], "Decoding jwt failed"
+            json.loads(response.content)["error"], "Decoding jwt failed"
         )
 
     async def test_valid_jwt_otp_not_verified(self):
@@ -189,8 +189,8 @@ class StatusViewTestCase(TestCase):
         request.COOKIES["jwt"] = valid_jwt
         response = await self.view(request)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(json.loads(response.content.decode("utf-8"))["access_token_valid"], True)
-        self.assertEqual(json.loads(response.content.decode("utf-8"))["otp_authenticated"], False)
+        self.assertEqual(json.loads(response.content)["access_token_valid"], True)
+        self.assertEqual(json.loads(response.content)["otp_authenticated"], False)
 
     async def test_valid_jwt_otp_verified(self):
         valid_jwt = FAKE_JWT_PASS_OTP
@@ -198,8 +198,8 @@ class StatusViewTestCase(TestCase):
         request.COOKIES["jwt"] = valid_jwt
         response = await self.view(request)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(json.loads(response.content.decode("utf-8"))["access_token_valid"], True)
-        self.assertEqual(json.loads(response.content.decode("utf-8"))["otp_authenticated"], True)
+        self.assertEqual(json.loads(response.content)["access_token_valid"], True)
+        self.assertEqual(json.loads(response.content)["otp_authenticated"], True)
 
 
 class UserInfoViewTestCase(TestCase):
