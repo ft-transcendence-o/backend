@@ -19,7 +19,7 @@ from .decorators import (
 )
 from .models import User, OTPSecret, OTPLockInfo
 from .utils import get_user_data
-from .constants import *
+from common.constants import *
 
 
 logger = logging.getLogger(__name__)

@@ -8,7 +8,7 @@ import jwt
 
 from .models import User
 from .utils import get_user_data
-from .constants import (
+from common.constants import (
     INTRA_SECRET_KEY,
     INTRA_UID,
     STATE,

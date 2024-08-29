@@ -1,4 +1,4 @@
-from django.test import TestCase, AsyncClient, RequestFactory
+from django.test import TestCase, AsyncClient, AsyncRequestFactory
 from django.urls import reverse
 from django.utils import timezone
 from datetime import timedelta
@@ -9,8 +9,8 @@ import jwt
 import pyotp
 
 from .models import OTPLockInfo, OTPSecret, User
-from .constants import MAX_ATTEMPTS, JWT_SECRET
-from .fakes import (
+from common.constants import MAX_ATTEMPTS, JWT_SECRET
+from common.fakes import (
     fake_decorators,
     FAKE_USER,
     FAKE_JWT_NO_OTP,
@@ -22,11 +22,11 @@ with fake_decorators():
     from .views import OAuthView, OTPView, UserInfo, StatusView, QRcodeView
 
 
-class QRcodeTestCase(TestCase):
+class QRcodeViewTestCase(TestCase):
     """Integration tests for QRcode View class"""
 
     def setUp(self):
-        self.factory = RequestFactory()
+        self.factory = AsyncRequestFactory()
         self.view = QRcodeView()
 
         self.user = User.objects.create(**FAKE_USER)
@@ -66,11 +66,11 @@ class QRcodeTestCase(TestCase):
         self.assertIn("TESTSECRET", uri)
 
 
-class OTPTestCase(TestCase):
+class OTPViewTestCase(TestCase):
     """Integration tests for OTP View class"""
 
     def setUp(self):
-        self.factory = RequestFactory()
+        self.factory = AsyncRequestFactory()
         self.view = OTPView()
         self.user_id = FAKE_USER["id"]
 
@@ -159,11 +159,11 @@ class OTPTestCase(TestCase):
         self.assertEqual(updated_otp_lock_info.attempts, 0)
 
 
-class StatusTestCase(TestCase):
+class StatusViewTestCase(TestCase):
     """Integration tests for Status View class"""
 
     def setUp(self):
-        self.factory = RequestFactory()
+        self.factory = AsyncRequestFactory()
         self.view = StatusView.as_view()
         self.url = reverse("auth_status")
         self.user_data = FAKE_USER
@@ -202,7 +202,7 @@ class StatusTestCase(TestCase):
         self.assertEqual(json.loads(response.content.decode("utf-8"))["otp_authenticated"], True)
 
 
-class UserInfoTestCase(TestCase):
+class UserInfoViewTestCase(TestCase):
     """Integration tests for UserInfo View class"""
 
     def setUp(self):

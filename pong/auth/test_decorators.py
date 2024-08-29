@@ -8,7 +8,7 @@ import jwt
 
 from .decorators import token_required, login_required
 from .models import OTPSecret, User, OTPLockInfo
-from .constants import JWT_SECRET, JWT_EXPIRED
+from common.constants import JWT_SECRET, JWT_EXPIRED
 
 
 class AuthDecoratorTestCase(TestCase):

@@ -6,7 +6,7 @@ import logging
 
 from .models import User, OTPSecret
 from .crypto import AESCipher
-from .constants import TOKEN_EXPIRES
+from common.constants import TOKEN_EXPIRES
 
 
 logger = logging.getLogger(__name__)
