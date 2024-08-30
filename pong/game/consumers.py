@@ -72,7 +72,7 @@ class GameConsumer(AsyncWebsocketConsumer):
                 await self.game.update()
                 await asyncio.sleep(0.006)
         except asyncio.CancelledError:
-            print("CancelledError")
+            pass
 
     def start_game(self):
         self.game_task = asyncio.create_task(self.game_loop())
