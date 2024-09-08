@@ -27,7 +27,7 @@ class PongGame(metaclass=ABCMeta):
         TournamentGame, NormalGame 모드로 구분된 게임이 종료되었을 떄
         데이터를 처리하는 방식이 상이함
         """
-        pass
+        raise NotImplementedError("This method must be implemented.")
 
     def __init__(self, send_callback, session_data):
         self.send_callback = send_callback
